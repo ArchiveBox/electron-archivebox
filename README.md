@@ -13,6 +13,8 @@
 ## Quickstart
 
 The desktop app depends on Docker already being installed and running on your system.
+This is a hard dependency as the Desktop app is just a wrapper around the Docker container (for now).
+(Cross-platform packaging of Python + JS + Chrome + wget + curl and more without Docker is a hard problem)
 
 https://docs.docker.com/get-docker/
 
