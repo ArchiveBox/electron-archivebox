@@ -12,6 +12,10 @@
 
 ## Quickstart
 
+The desktop app depends on Docker already being installed and running on your system.
+
+https://docs.docker.com/get-docker/
+
 ```bash
 # Clone this repository
 git clone https://github.com/ArchiveBox/desktop && cd desktop
