@@ -1,6 +1,12 @@
+<div align="center">
+
 # ArchiveBox Desktop (alpha)
 
 *Electron desktop app concept for ArchiveBox.*
+
+<img src="https://i.imgur.com/QPHUS5C.png" width="400px">
+
+</div>
 
 ---
 
