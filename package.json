@@ -1,0 +1,62 @@
+{
+  "name": "archivebox-desktop",
+  "version": "1.0.0",
+  "description": "Desktop Electron app for the ArchiveBox internet archiver",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron-forge start",
+    "package": "electron-forge package",
+    "make": "electron-forge make"
+  },
+  "repository": "https://github.com/ArchiveBox/desktop",
+  "keywords": [
+    "ArchiveBox",
+    "internet",
+    "archiving",
+    "GUI",
+    "desktop",
+    "web"
+  ],
+  "author": "Nick Sweeting",
+  "license": "AGPL v2",
+  "devDependencies": {
+    "@electron-forge/cli": "^6.0.0-beta.54",
+    "@electron-forge/maker-deb": "^6.0.0-beta.54",
+    "@electron-forge/maker-rpm": "^6.0.0-beta.54",
+    "@electron-forge/maker-squirrel": "^6.0.0-beta.54",
+    "@electron-forge/maker-zip": "^6.0.0-beta.54",
+    "electron": "^11.0.1"
+  },
+  "dependencies": {
+    "dockernode": "^0.1.0",
+    "dockerode": "^3.2.1",
+    "electron-squirrel-startup": "^1.0.0"
+  },
+  "config": {
+    "forge": {
+      "packagerConfig": {},
+      "makers": [
+        {
+          "name": "@electron-forge/maker-squirrel",
+          "config": {
+            "name": "archivebox"
+          }
+        },
+        {
+          "name": "@electron-forge/maker-zip",
+          "platforms": [
+            "darwin"
+          ]
+        },
+        {
+          "name": "@electron-forge/maker-deb",
+          "config": {}
+        },
+        {
+          "name": "@electron-forge/maker-rpm",
+          "config": {}
+        }
+      ]
+    }
+  }
+}
