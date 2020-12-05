@@ -9,10 +9,10 @@ const BIND_HOST = '0.0.0.0'
 const BIND_PORT = '8085'
 // const DOCKER_IMAGE = 'ubuntu'
 // const DOCKER_CMD = ['uname', '-a']
-const DOCKER_IMAGE = 'nikisweeting/archivebox:latest'
+const DOCKER_IMAGE = 'archivebox/archivebox:latest'
 const DOCKER_CMD = ['archivebox', 'server', '--init', `0.0.0.0:${BIND_PORT}`]
 
-// globals
+// globals are bad mmmkay kids
 let WINDOW = null
 let TRAY = null
 let DOCKER = null
