@@ -86,7 +86,7 @@ const updateTray = () => {
             if (!CONTAINER) {
                 startDocker()
             }
-            DOCKER.pull('nikisweeting/archivebox', function (err, stream) {
+            DOCKER.pull('archivebox/archivebox', function (err, stream) {
                 stream.pipe(process.stdout)
             });
         } },
