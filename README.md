@@ -1,10 +1,15 @@
 <div align="center">
 
-# ArchiveBox Desktop (alpha)
+# ArchiveBox Desktop (alpha, help wanted!)
 
 *Electron desktop app concept for ArchiveBox.*
 
 <img src="https://i.imgur.com/QPHUS5C.png" width="400px">
+<br/>
+
+*We're looking for contributors to help make our dekstop app experience better!*
+
+Reach out [on Twitter](https://twitter.com/ArchiveBoxApp) or open [an issue](https://github.com/ArchiveBox/electron-archivebox/issues) if you're interested in helping.
 
 </div>
 
