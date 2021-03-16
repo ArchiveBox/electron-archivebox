@@ -113,6 +113,12 @@ const startDocker = () => {
     // console.log(DOCKER)
     console.log('[+] Pulling docker container...')
     DOCKER.pull(DOCKER_IMAGE, function (err, pull_stream) {
+
+        if (err) {
+            console.error('Failed to connect to Docker:');
+            return console.error(err);
+        }
+
         pull_stream.pipe(process.stdout)
         DOCKER.modem.followProgress(pull_stream, () => {
             console.log('[+] Creating docker container...')
