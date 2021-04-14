@@ -1,6 +1,6 @@
 {
-  "name": "archivebox-desktop",
-  "version": "1.0.0",
+  "name": "electron-archivebox",
+  "version": "0.6.2",
   "description": "Desktop Electron app for the ArchiveBox internet archiver",
   "main": "main.js",
   "scripts": {
@@ -8,7 +8,7 @@
     "package": "electron-forge package",
     "make": "electron-forge make"
   },
-  "repository": "https://github.com/ArchiveBox/desktop",
+  "repository": "https://github.com/ArchiveBox/electron-archivebox",
   "keywords": [
     "ArchiveBox",
     "internet",
