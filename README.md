@@ -21,6 +21,8 @@ The desktop app depends on Docker already being installed and running on your sy
 This is a hard dependency as the Desktop app is just a wrapper around the Docker container (for now).
 (Cross-platform packaging of Python + JS + Chrome + wget + curl and more without Docker is a hard problem)
 
+Yes, it's an Electron app, yes, I'm sorry. Electron is just so easy compared to the alternatives, and I don't have the time to do full native development.
+
 https://docs.docker.com/get-docker/
 
 ```bash
