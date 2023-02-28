@@ -27,7 +27,7 @@ https://docs.docker.com/get-docker/
 
 ```bash
 # Clone this repository
-git clone https://github.com/ArchiveBox/desktop && cd desktop
+git clone https://github.com/ArchiveBox/electron-archivebox && cd electron-archivebox
 
 # Install dependencies
 npm install
