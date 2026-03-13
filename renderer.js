@@ -2,7 +2,7 @@ const ARCHIVEBOX_URL = 'http://127.0.0.1:8085/'
 
 window.addEventListener('DOMContentLoaded', () => {
   const archiveLink = document.getElementById('archivebox-link')
-  const disableRedirect = new URLSearchParams(window.location.search).has('noRedirect')
+  const disableRedirect = new URLSearchParams(window.location.search).has('no_redirect')
 
   if (archiveLink) {
     archiveLink.href = ARCHIVEBOX_URL
