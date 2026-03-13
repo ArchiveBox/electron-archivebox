@@ -20,17 +20,16 @@
   "author": "Nick Sweeting",
   "license": "AGPL v2",
   "devDependencies": {
-    "@electron-forge/cli": "^6.0.0-beta.54",
-    "@electron-forge/maker-deb": "^6.0.0-beta.54",
-    "@electron-forge/maker-rpm": "^6.0.0-beta.54",
-    "@electron-forge/maker-squirrel": "^6.0.0-beta.54",
-    "@electron-forge/maker-zip": "^6.0.0-beta.54",
-    "electron": "^18.0.3"
+    "@electron-forge/cli": "^7.11.1",
+    "@electron-forge/maker-deb": "^7.11.1",
+    "@electron-forge/maker-rpm": "^7.11.1",
+    "@electron-forge/maker-squirrel": "^7.11.1",
+    "@electron-forge/maker-zip": "^7.11.1",
+    "electron": "^41.0.2"
   },
   "dependencies": {
-    "dockernode": "^0.1.0",
-    "dockerode": "^3.3.0",
-    "electron-squirrel-startup": "^1.0.0"
+    "dockerode": "^4.0.9",
+    "electron-squirrel-startup": "^1.0.1"
   },
   "config": {
     "forge": {

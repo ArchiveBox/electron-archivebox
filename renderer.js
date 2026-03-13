@@ -1,6 +1,18 @@
-// This file is required by the index.html file and will
-// be executed in the renderer process for that window.
-// No Node.js APIs are available in this process because
-// `nodeIntegration` is turned off. Use `preload.js` to
-// selectively enable features needed in the rendering
-// process.
+const ARCHIVEBOX_URL = 'http://127.0.0.1:8085/'
+
+window.addEventListener('DOMContentLoaded', () => {
+  const archiveLink = document.getElementById('archivebox-link')
+  const disableRedirect = new URLSearchParams(window.location.search).has('no_redirect')
+
+  if (archiveLink) {
+    archiveLink.href = ARCHIVEBOX_URL
+  }
+
+  if (disableRedirect) {
+    return
+  }
+
+  window.setTimeout(() => {
+    window.location.replace(ARCHIVEBOX_URL)
+  }, 1000)
+})
