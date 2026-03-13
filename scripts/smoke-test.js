@@ -10,8 +10,8 @@ const PORT = process.env.ARCHIVEBOX_SMOKE_PORT || '18085'
 const CONTAINER_NAME = `archivebox-smoke-test-${process.pid}-${Date.now()}`
 const DATA_DIR = fs.mkdtempSync(path.join(os.tmpdir(), 'archivebox-smoke-'))
 
-const callDocker = (ctx, method, ...args) => new Promise((resolve, reject) => {
-    ctx[method](...args, (err, result) => err ? reject(err) : resolve(result))
+const callDocker = (dockerObject, method, ...args) => new Promise((resolve, reject) => {
+    dockerObject[method](...args, (err, result) => err ? reject(err) : resolve(result))
 })
 
 const followProgress = (stream) => new Promise((resolve, reject) => {
@@ -61,7 +61,7 @@ const assertResponse = async (url, validate, message) => {
     return response
 }
 
-const printContainerLogs = async (container) => {
+const logContainerOutput = async (container) => {
     if (!container) {
         return
     }
@@ -171,7 +171,7 @@ const main = async () => {
         console.log('Smoke test completed successfully.')
     } catch (err) {
         console.error(`Smoke test failed: ${err.message}`)
-        await printContainerLogs(container)
+        await logContainerOutput(container)
         process.exitCode = 1
     } finally {
         await cleanup(container)
