@@ -5,6 +5,7 @@
   "main": "main.js",
   "scripts": {
     "start": "electron-forge start",
+    "smoke-test": "node scripts/smoke-test.js",
     "package": "electron-forge package",
     "make": "electron-forge make"
   },

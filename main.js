@@ -81,7 +81,7 @@ const updateTray = () => {
             openWindow(`http://127.0.0.1:${BIND_PORT}/add/`)
         } },
         { label: 'Manage Users', click() { 
-            openWindow(`http://127.0.0.1:${BIND_PORT}/admin/core/user/`)
+            openWindow(`http://127.0.0.1:${BIND_PORT}/admin/auth/user/`)
         } },
         { type: 'separator' },
         { label: 'Settings', async click() {
