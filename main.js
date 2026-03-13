@@ -1,7 +1,11 @@
-const {app, Menu, Tray, BrowserWindow, systemPreferences, shell} = require('electron')
+const { app, Menu, Tray, BrowserWindow, shell } = require('electron')
 const Docker = require('dockerode')
 const path = require('path')
 const os = require('os')
+
+if (require('electron-squirrel-startup')) {
+    app.quit()
+}
 
 // constants
 const DATA_DIR = path.join(os.homedir(), 'archivebox')
@@ -21,34 +25,37 @@ let CONTAINER = null
 
 const openWindow = (url) => {
     console.log(`[+] Opening ${url} in main window...`)
-    WINDOW = WINDOW || new BrowserWindow({
-        width: 800,
-        height: 600,
-        titleBarStyle: 'hidden',
-        webPreferences: {
-            contextIsolation: true,
-            preload: path.join(__dirname, 'preload.js')
-        },
-    })
+    if (!WINDOW) {
+        WINDOW = new BrowserWindow({
+            width: 800,
+            height: 600,
+            titleBarStyle: 'hidden',
+            webPreferences: {
+                contextIsolation: true,
+                nodeIntegration: false,
+                preload: path.join(__dirname, 'preload.js')
+            },
+        })
+        WINDOW.on('closed', () => {
+            WINDOW = null
+        })
+    }
     // Open the DevTools.
     // WINDOW.webContents.openDevTools()
     WINDOW.loadURL(url)
+    WINDOW.focus()
 }
 
 const createTray = () => {
     TRAY = TRAY || new Tray(path.join(__dirname, trayIcon()))
     if (process.platform === 'win32') {
-        TRAY.on('click', TRAY.popUpContextMenu);
+        TRAY.on('click', () => TRAY.popUpContextMenu())
     }
     TRAY.setToolTip('ArchiveBox')
 }
 
 const trayIcon = () => {
     return 'icon.png'
-    // if (process.platform === 'win32') return 'icon-light.ico';
-    if (nativeTheme.shouldUseDarkColors())
-        return 'icon-dark.png'
-    return 'icon-light.png'
 }
 
 const updateTray = () => {
@@ -77,10 +84,11 @@ const updateTray = () => {
             openWindow(`http://127.0.0.1:${BIND_PORT}/admin/core/user/`)
         } },
         { type: 'separator' },
-        { label: 'Settings', click() { 
-            const modal = WINDOW.open('', 'modal')
-            modal.document.write('<h1>Hello</h1>')
-            shell.openItem(path.join(DATA_DIR, 'ArchiveBox.conf'))
+        { label: 'Settings', async click() {
+            const errorMessage = await shell.openPath(path.join(DATA_DIR, 'ArchiveBox.conf'))
+            if (errorMessage) {
+                console.error(errorMessage)
+            }
         } },
         { label: 'Update', click() { 
             if (!CONTAINER) {
@@ -128,7 +136,7 @@ const startDocker = () => {
                     'Image': DOCKER_IMAGE,
                     'Cmd': DOCKER_CMD,
                     'Tty': true,
-                    'Hostconfig': {
+                    'HostConfig': {
                         'Binds': [`${DATA_DIR}:/data`],
                         "PortBindings": {
                             [`${BIND_PORT}/tcp`]: [{ "HostPort": BIND_PORT }],
@@ -169,13 +177,12 @@ console.log('[+] Starting ArchiveBox...')
 // dont quit the app when main window is closed
 app.on('window-all-closed', event => {
     event.preventDefault()
-    WINDOW = null
 })
 
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
-app.on('ready', () => {
+app.whenReady().then(() => {
 
     console.log('[+] Starting ArchiveBox tray icon...')
     createTray()
