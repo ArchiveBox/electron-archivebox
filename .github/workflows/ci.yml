@@ -38,7 +38,7 @@ jobs:
         run: npm run smoke-test
 
   windows:
-    name: Windows package and screenshots
+    name: Windows package
     runs-on: windows-latest
     steps:
       - name: Check out repository
@@ -50,24 +50,36 @@ jobs:
           cache: npm
       - name: Install dependencies
         run: npm ci
-      - name: Set up Docker Engine
-        uses: docker/setup-docker-action@v5
-        with:
-          set-host: true
-      - name: Verify Docker daemon
-        run: docker info
       - name: Lint
         run: npm run lint
       - name: Build Windows installer
         run: npm run make
-      - name: Capture desktop screens
-        run: npm run capture-screenshots
       - name: Upload Windows build
         uses: actions/upload-artifact@v4
         with:
           name: archivebox-windows-build
           path: out/make/**
           if-no-files-found: error
+
+  screenshots:
+    name: Real Docker-backed screenshots
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Verify Docker daemon
+        run: docker info
+      - name: Capture desktop screens
+        env:
+          ELECTRON_DISABLE_SANDBOX: 1
+        run: xvfb-run -a npm run capture-screenshots
       - name: Upload screenshots
         uses: actions/upload-artifact@v4
         with:
@@ -78,7 +90,7 @@ jobs:
   pages:
     name: Publish screenshot gallery
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    needs: windows
+    needs: [windows, screenshots]
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -90,7 +102,7 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v5
-      - name: Download Windows screenshots
+      - name: Download screenshot artifact
         uses: actions/download-artifact@v5
         with:
           name: archivebox-screenshots
