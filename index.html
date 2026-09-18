@@ -2,15 +2,20 @@
 <html>
   <head>
     <meta charset="UTF-8">
-    <!-- https://developer.mozilla.org/en-US/docs/Web/HTTP/CSP -->
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'">
-    <meta http-equiv="X-Content-Security-Policy" content="default-src 'self'; script-src 'self'">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'self' http://127.0.0.1:8085; img-src 'self' data:; script-src 'self'; style-src 'self'">
+    <link rel="stylesheet" href="./styles.css">
     <title>Opening ArchiveBox…</title>
   </head>
   <body>
-    <h1>Opening ArchiveBox…</h1>
-    <p>If ArchiveBox does not open automatically, use the link below once the local service is ready.</p>
-    <p><a id="archivebox-link" href="http://127.0.0.1:8085/">Open ArchiveBox</a></p>
+    <div id="app" class="loading-screen">
+      <div class="loading-card">
+        <span class="brand-mark">A</span>
+        <p class="section-label">ArchiveBox desktop</p>
+        <h1>Opening ArchiveBox…</h1>
+        <p>If ArchiveBox does not open automatically, use the link below once the local service is ready.</p>
+        <a id="archivebox-link" class="primary-button" href="http://127.0.0.1:8085/">Open ArchiveBox</a>
+      </div>
+    </div>
     <script src="./renderer.js"></script>
   </body>
 </html>

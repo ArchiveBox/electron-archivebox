@@ -1,12 +1,10 @@
-// All of the Node.js APIs are available in the preload process.
-// It has the same sandbox as a Chrome extension.
-window.addEventListener('DOMContentLoaded', () => {
-  const replaceText = (selector, text) => {
-    const element = document.getElementById(selector)
-    if (element) element.innerText = text
-  }
+const { contextBridge } = require('electron')
 
-  for (const type of ['chrome', 'node', 'electron']) {
-    replaceText(`${type}-version`, process.versions[type])
-  }
-})
+contextBridge.exposeInMainWorld('archivebox', Object.freeze({
+    platform: process.platform,
+    versions: Object.freeze({
+        chrome: process.versions.chrome,
+        electron: process.versions.electron,
+        node: process.versions.node,
+    }),
+}))

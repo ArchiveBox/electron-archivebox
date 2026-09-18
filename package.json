@@ -5,9 +5,15 @@
   "main": "main.js",
   "scripts": {
     "start": "electron-forge start",
+    "lint": "eslint .",
     "smoke-test": "node scripts/smoke-test.js",
+    "capture-screenshots": "node scripts/capture-screenshots.js",
     "package": "electron-forge package",
     "make": "electron-forge make"
+  },
+  "engines": {
+    "node": ">=22.14.0",
+    "npm": ">=10.9.0"
   },
   "repository": "https://github.com/ArchiveBox/electron-archivebox",
   "keywords": [
@@ -36,7 +42,9 @@
   },
   "config": {
     "forge": {
-      "packagerConfig": {},
+      "packagerConfig": {
+        "asar": true
+      },
       "makers": [
         {
           "name": "@electron-forge/maker-squirrel",
