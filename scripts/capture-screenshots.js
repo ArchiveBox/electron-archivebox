@@ -113,10 +113,13 @@ const prepareCollection = async dataDir => {
 
 const cleanupDataDir = async dataDir => {
     try {
+        const cleanupCommand = process.platform === 'win32'
+            ? 'rm -rf /data/* /data/.[!.]*'
+            : `rm -rf /data/* /data/.[!.]*; chown ${process.getuid?.() || 0}:${process.getgid?.() || 0} /data`
         await runContainerCommand(
             dataDir,
             `archivebox-cleanup-${process.pid}`,
-            ['-lc', `rm -rf /data/* /data/.[!.]*; chown ${process.getuid?.() || 0}:${process.getgid?.() || 0} /data`],
+            ['-lc', cleanupCommand],
             {},
             '0:0',
             ['/bin/sh']
@@ -188,7 +191,7 @@ const captureRealScreens = async ({ dataDir, port, containerName }) => {
         await page.goto(`${origin}/public/`)
         const snapshotHref = await page.locator('a[href*="/archive/"]').evaluateAll(links => links
             .map(link => link.getAttribute('href'))
-            .find(href => href && /^\/archive\/\d+\/index\.html$/.test(href)))
+            .find(href => href && /^\/archive\/[^/]+\/index\.html$/.test(href)))
         if (!snapshotHref) {
             throw new Error('The real ArchiveBox collection did not expose a snapshot link')
         }
