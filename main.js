@@ -1,5 +1,6 @@
 const { app, BrowserWindow, Menu, shell, Tray } = require('electron')
 const Docker = require('dockerode')
+const fs = require('node:fs/promises')
 const os = require('node:os')
 const path = require('node:path')
 const { pathToFileURL } = require('node:url')
@@ -12,7 +13,6 @@ const DOCKER_IMAGE = 'archivebox/archivebox:latest'
 const DOCKER_CMD = ['archivebox', 'server', '--init', `${BIND_HOST}:${BIND_PORT}`]
 const ARCHIVEBOX_ORIGIN = `http://127.0.0.1:${BIND_PORT}`
 const APP_FILE_URL_PREFIX = pathToFileURL(__dirname).href
-const SCREENSHOT_MODE = process.env.ARCHIVEBOX_SCREENSHOT_MODE === '1'
 
 let mainWindow = null
 let tray = null
@@ -77,8 +77,8 @@ const createWindow = async () => {
     }
 
     mainWindow = new BrowserWindow({
-        width: SCREENSHOT_MODE ? 1280 : 1000,
-        height: SCREENSHOT_MODE ? 800 : 700,
+        width: 1280,
+        height: 800,
         show: false,
         backgroundColor: '#f7f8fc',
         webPreferences: {
@@ -95,15 +95,6 @@ const createWindow = async () => {
     mainWindow.on('closed', () => {
         mainWindow = null
     })
-
-    if (SCREENSHOT_MODE) {
-        await mainWindow.loadFile(path.join(__dirname, 'index.html'), {
-            query: {
-                no_redirect: '1',
-                screen: process.env.ARCHIVEBOX_SCREEN || 'archive',
-            },
-        })
-    }
 
     return mainWindow
 }
@@ -154,8 +145,30 @@ const pullImage = async () => {
     await followProgress(pullStream)
 }
 
+const waitForService = async () => {
+    const deadline = Date.now() + 120000
+    let lastError = null
+
+    while (Date.now() < deadline) {
+        try {
+            const response = await fetch(`${ARCHIVEBOX_ORIGIN}/`, {
+                redirect: 'manual',
+            })
+            if (response.status >= 200 && response.status < 500) {
+                return
+            }
+            lastError = new Error(`ArchiveBox returned HTTP ${response.status}`)
+        } catch (error) {
+            lastError = error
+        }
+        await new Promise(resolve => setTimeout(resolve, 1000))
+    }
+
+    throw lastError || new Error('Timed out waiting for ArchiveBox')
+}
+
 const startDocker = async () => {
-    if (SCREENSHOT_MODE || container) {
+    if (container) {
         return
     }
 
@@ -163,6 +176,7 @@ const startDocker = async () => {
         console.log('[+] Connecting to Docker daemon...')
         docker = docker || new Docker({ timeout: 100000 })
         await callDocker(docker, 'ping')
+        await fs.mkdir(DATA_DIR, { recursive: true })
         console.log('[+] Pulling Docker image...')
         await pullImage()
 
@@ -187,12 +201,15 @@ const startDocker = async () => {
             Volumes: {
                 '/data': {},
             },
+            name: process.env.ARCHIVEBOX_CONTAINER_NAME || `archivebox-desktop-${process.pid}`,
         })
 
         await callDocker(nextContainer, 'start')
         container = nextContainer
         console.log('[√] Started ArchiveBox Docker container')
         updateTray()
+        await waitForService()
+        await openWindow(`${ARCHIVEBOX_ORIGIN}/`)
     } catch (error) {
         console.error(`[X] Failed to start ArchiveBox: ${error.message}`)
         updateTray()
@@ -299,7 +316,7 @@ const bootstrap = async () => {
     })
 
     app.on('activate', () => {
-        if (!mainWindow && !SCREENSHOT_MODE) {
+        if (!mainWindow && container) {
             void openWindow(`${ARCHIVEBOX_ORIGIN}/`)
         }
     })
@@ -321,11 +338,6 @@ const bootstrap = async () => {
     })
 
     await app.whenReady()
-
-    if (SCREENSHOT_MODE) {
-        await createWindow()
-        return
-    }
 
     createTray()
     void startDocker()
