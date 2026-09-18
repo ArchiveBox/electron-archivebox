@@ -2,15 +2,45 @@
 <html>
   <head>
     <meta charset="UTF-8">
-    <!-- https://developer.mozilla.org/en-US/docs/Web/HTTP/CSP -->
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'">
-    <meta http-equiv="X-Content-Security-Policy" content="default-src 'self'; script-src 'self'">
-    <title>Opening ArchiveBox…</title>
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; connect-src 'self' http://127.0.0.1:*; frame-src http://127.0.0.1:*; img-src 'self' data:; script-src 'self'; style-src 'self'">
+    <link rel="stylesheet" href="./styles.css">
+    <title>ArchiveBox Desktop</title>
   </head>
   <body>
-    <h1>Opening ArchiveBox…</h1>
-    <p>If ArchiveBox does not open automatically, use the link below once the local service is ready.</p>
-    <p><a id="archivebox-link" href="http://127.0.0.1:8085/">Open ArchiveBox</a></p>
+    <div id="app" class="desktop-window">
+      <header class="window-titlebar">
+        <div class="window-title" aria-label="ArchiveBox Desktop">
+          <span class="brand-mark">A</span>
+          <span>ArchiveBox Desktop</span>
+        </div>
+        <div class="window-controls" aria-label="Window controls">
+          <button id="minimize-window" class="window-control" aria-label="Minimize">−</button>
+          <button id="maximize-window" class="window-control" aria-label="Maximize">□</button>
+          <button id="close-window" class="window-control close-control" aria-label="Close">×</button>
+        </div>
+      </header>
+
+      <nav class="menubar" aria-label="Application menu">
+        <button class="menu-item" type="button">File</button>
+        <button class="menu-item" type="button">Archive</button>
+        <button class="menu-item" type="button">View</button>
+        <button class="menu-item" type="button">Window</button>
+        <button class="menu-item" type="button">Help</button>
+        <span class="menu-status">Local ArchiveBox</span>
+      </nav>
+
+      <nav class="app-toolbar" aria-label="ArchiveBox navigation">
+        <button class="toolbar-button" type="button" data-route="/public/">View archive</button>
+        <button class="toolbar-button" type="button" data-route="/add/">Add URLs</button>
+        <button class="toolbar-button" type="button" data-route="/admin/auth/user/">Manage users</button>
+        <span id="service-status" class="service-status">Connecting to local service…</span>
+      </nav>
+
+      <main class="archive-content">
+        <div id="frame-loading" class="frame-loading">Loading ArchiveBox…</div>
+        <iframe id="archivebox-frame" title="ArchiveBox" loading="eager"></iframe>
+      </main>
+    </div>
     <script src="./renderer.js"></script>
   </body>
 </html>

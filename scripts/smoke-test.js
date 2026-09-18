@@ -1,9 +1,9 @@
 const fs = require('fs')
 const os = require('os')
 const path = require('path')
-const Docker = require('dockerode')
+const { createDockerClient } = require('../docker-client')
 
-const docker = new Docker({ timeout: 120000 })
+const docker = createDockerClient({ timeout: 120000 })
 
 const IMAGE = 'archivebox/archivebox:latest'
 const PORT = process.env.ARCHIVEBOX_SMOKE_PORT || '18085'

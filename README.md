@@ -4,10 +4,12 @@
 
 *Electron desktop app concept for ArchiveBox.*
 
+![CI](https://github.com/ArchiveBox/electron-archivebox/actions/workflows/ci.yml/badge.svg)
+
 <img src="https://i.imgur.com/QPHUS5C.png" width="400px">
 <br/>
 
-*We're looking for contributors to help make our dekstop app experience better!*
+*We're looking for contributors to help make our desktop app experience better!*
 
 Reach out [on Twitter](https://twitter.com/ArchiveBoxApp) or open [an issue](https://github.com/ArchiveBox/electron-archivebox/issues) if you're interested in helping.
 
@@ -46,3 +48,22 @@ ELECTRON_DISABLE_SANDBOX=1 xvfb-run -a npm start
 ```
 
 Note: If you're using Linux Bash for Windows, [see this guide](https://www.howtogeek.com/261575/how-to-run-graphical-linux-desktop-applications-from-windows-10s-bash-shell/) or use `node` from the command prompt.
+
+## Development checks
+
+The project uses Electron 44, Electron Forge, and Node.js 22 or newer. Run the
+same checks used by CI before opening a pull request:
+
+```bash
+npm ci
+npm run lint
+npm run package
+```
+
+The Windows CI job builds the Squirrel installer. A compatible Linux CI job
+starts a real ArchiveBox Docker collection, creates a real snapshot, performs a
+real Add URLs action in the Electron window, and captures the View Archive, Add
+URLs, Manage Users, and Snapshot Detail screens. Each image includes the complete desktop window,
+including the title bar, window controls, application menubar, navigation toolbar, and real ArchiveBox
+content. The generated screenshots are published in the
+[desktop screen gallery](https://archivebox.github.io/electron-archivebox/).
