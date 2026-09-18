@@ -46,7 +46,10 @@ const SCREENS = {
 const version = name => window.archivebox?.versions?.[name] || 'unknown'
 
 const renderScreen = requestedScreen => {
-    const screen = SCREENS[requestedScreen] || SCREENS.archive
+    const screenName = Object.prototype.hasOwnProperty.call(SCREENS, requestedScreen)
+        ? requestedScreen
+        : 'archive'
+    const screen = SCREENS[screenName]
     const app = document.getElementById('app')
     if (!app) {
         return
@@ -54,7 +57,7 @@ const renderScreen = requestedScreen => {
 
     document.title = `${screen.label} · ArchiveBox`
     app.innerHTML = `
-      <div class="app-layout" data-screen="${requestedScreen in SCREENS ? requestedScreen : 'archive'}">
+      <div class="app-layout" data-screen="${screenName}">
         <aside class="sidebar">
           <div class="brand">
             <span class="brand-mark">A</span>
@@ -62,10 +65,10 @@ const renderScreen = requestedScreen => {
           </div>
           <p class="sidebar-caption">Desktop</p>
           <nav class="navigation" aria-label="Primary navigation">
-            <a class="nav-link${requestedScreen === 'archive' ? ' active' : ''}" href="?no_redirect=1&screen=archive" data-screen-link="archive">View Archive</a>
-            <a class="nav-link${requestedScreen === 'add-urls' ? ' active' : ''}" href="?no_redirect=1&screen=add-urls" data-screen-link="add-urls">Add URLs</a>
-            <a class="nav-link${requestedScreen === 'manage-users' ? ' active' : ''}" href="?no_redirect=1&screen=manage-users" data-screen-link="manage-users">Manage Users</a>
-            <a class="nav-link${requestedScreen === 'settings' ? ' active' : ''}" href="?no_redirect=1&screen=settings" data-screen-link="settings">Settings</a>
+            <a class="nav-link${screenName === 'archive' ? ' active' : ''}" href="?no_redirect=1&screen=archive" data-screen-link="archive">View Archive</a>
+            <a class="nav-link${screenName === 'add-urls' ? ' active' : ''}" href="?no_redirect=1&screen=add-urls" data-screen-link="add-urls">Add URLs</a>
+            <a class="nav-link${screenName === 'manage-users' ? ' active' : ''}" href="?no_redirect=1&screen=manage-users" data-screen-link="manage-users">Manage Users</a>
+            <a class="nav-link${screenName === 'settings' ? ' active' : ''}" href="?no_redirect=1&screen=settings" data-screen-link="settings">Settings</a>
           </nav>
           <div class="sidebar-footer">
             <span class="status-dot"></span>
@@ -81,7 +84,7 @@ const renderScreen = requestedScreen => {
             <p class="section-label">${screen.label}</p>
             <h1>${screen.heading}</h1>
             <p class="hero-description">${screen.description}</p>
-            <button class="primary-button" type="button" data-screen-link="${requestedScreen in SCREENS ? requestedScreen : 'archive'}">${screen.label}</button>
+            <button class="primary-button" type="button" data-screen-link="${screenName}">${screen.label}</button>
           </section>
           <section class="stats" aria-label="ArchiveBox status">
             ${screen.stats.map(([value, label]) => `<div class="stat-card"><strong>${value}</strong><span>${label}</span></div>`).join('')}

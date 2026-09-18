@@ -21,7 +21,6 @@ const captureScreen = async screen => {
         await page.waitForSelector(`[data-screen="${screen}"]`)
         await page.screenshot({
             animations: 'disabled',
-            fullPage: true,
             path: path.join(OUTPUT_DIR, `${screen}.png`),
         })
         console.log(`Captured ${screen}.png`)

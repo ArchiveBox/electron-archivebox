@@ -109,11 +109,15 @@ const createWindow = async () => {
 }
 
 const openWindow = async url => {
-    const window = await createWindow()
-    if (url) {
-        await window.loadURL(url)
+    try {
+        const window = await createWindow()
+        if (url) {
+            await window.loadURL(url)
+        }
+        window.focus()
+    } catch (error) {
+        console.error(`[X] Failed to open ArchiveBox window: ${error.message}`)
     }
-    window.focus()
 }
 
 const trayIcon = () => path.join(__dirname, 'icon.png')
@@ -291,6 +295,12 @@ const bootstrap = async () => {
             }
             mainWindow.show()
             mainWindow.focus()
+        }
+    })
+
+    app.on('activate', () => {
+        if (!mainWindow && !SCREENSHOT_MODE) {
+            void openWindow(`${ARCHIVEBOX_ORIGIN}/`)
         }
     })
 
