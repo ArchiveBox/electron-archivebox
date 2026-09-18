@@ -143,7 +143,13 @@ const login = async page => {
     await frame.locator('input[name="username"]').fill(USERNAME)
     await frame.locator('input[name="password"]').fill(PASSWORD)
     await frame.locator('input[type="submit"], button[type="submit"]').first().click()
-    await frame.locator('#add-form').waitFor({ timeout: 120000 })
+    try {
+        await frame.locator('#add-form').waitFor({ timeout: 120000 })
+    } catch (error) {
+        const body = await frame.locator('body').innerText().catch(() => '')
+        console.error(`ArchiveBox login did not reach the add form:\n${body}`)
+        throw error
+    }
 }
 
 const captureRealScreens = async ({ dataDir, port, containerName }) => {
