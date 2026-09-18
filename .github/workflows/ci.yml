@@ -50,6 +50,8 @@ jobs:
           cache: npm
       - name: Install dependencies
         run: npm ci
+      - name: Set up Docker Engine
+        uses: docker/setup-docker-action@v5
       - name: Verify Docker daemon
         run: docker info
       - name: Lint
