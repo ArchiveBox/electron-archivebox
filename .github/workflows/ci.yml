@@ -1,0 +1,100 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: electron-archivebox-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  linux:
+    name: Linux checks
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Lint
+        run: npm run lint
+      - name: Package Electron app
+        run: npm run package
+      - name: Run Docker smoke test
+        run: npm run smoke-test
+
+  windows:
+    name: Windows package and screenshots
+    runs-on: windows-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Lint
+        run: npm run lint
+      - name: Build Windows installer
+        run: npm run make
+      - name: Capture desktop screens
+        run: npm run capture-screenshots
+      - name: Upload Windows build
+        uses: actions/upload-artifact@v4
+        with:
+          name: archivebox-windows-build
+          path: out/make/**
+          if-no-files-found: error
+      - name: Upload screenshots
+        uses: actions/upload-artifact@v4
+        with:
+          name: archivebox-screenshots
+          path: artifacts/screenshots
+          if-no-files-found: error
+
+  pages:
+    name: Publish screenshot gallery
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: windows
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+      - name: Download Windows screenshots
+        uses: actions/download-artifact@v5
+        with:
+          name: archivebox-screenshots
+          path: site/screenshots
+      - name: Assemble Pages site
+        run: cp -R docs/. site/
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+      - name: Deploy Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
