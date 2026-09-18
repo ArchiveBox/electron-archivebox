@@ -137,18 +137,32 @@ const cleanupDataDir = async dataDir => {
 
 const archiveFrame = page => page.frameLocator('#archivebox-frame')
 
-const login = async page => {
+const login = async (page, origin) => {
     const frame = archiveFrame(page)
     await frame.locator('input[name="username"]').waitFor({ timeout: 120000 })
     await frame.locator('input[name="username"]').fill(USERNAME)
     await frame.locator('input[name="password"]').fill(PASSWORD)
     await frame.locator('input[type="submit"], button[type="submit"]').first().click()
+
     try {
-        await frame.locator('#add-form').waitFor({ timeout: 120000 })
+        await frame.locator('#add-form').waitFor({ timeout: 30000 })
     } catch (error) {
+        if (await frame.locator('#login-form').count()) {
+            const body = await frame.locator('body').innerText().catch(() => '')
+            throw new Error(`ArchiveBox login failed:\n${body}`, { cause: error })
+        }
+
+        await page.locator('#archivebox-frame').evaluate((frameElement, addRoute) => {
+            frameElement.src = addRoute
+        }, `${origin}/add/`)
+        await frame.locator('body').waitFor({ timeout: 120000 })
+        await frame.locator('#add-form').waitFor({ timeout: 120000 })
+        return
+    }
+
+    if (!(await frame.locator('#add-form').count())) {
         const body = await frame.locator('body').innerText().catch(() => '')
         console.error(`ArchiveBox login did not reach the add form:\n${body}`)
-        throw error
     }
 }
 
@@ -175,7 +189,8 @@ const captureRealScreens = async ({ dataDir, port, containerName }) => {
         })
 
         await page.locator('[data-route="/add/"]').click()
-        await login(page)
+        await archiveFrame(page).locator('body').waitFor({ timeout: 120000 })
+        await login(page, origin)
         await archiveFrame(page).locator('#id_url').fill('https://example.org')
         const archiveMethods = archiveFrame(page).locator('#id_archive_methods')
         if (await archiveMethods.count()) {
@@ -191,6 +206,7 @@ const captureRealScreens = async ({ dataDir, port, containerName }) => {
         await archiveFrame(page).locator('#stdout').waitFor({ timeout: 180000 })
 
         await page.locator('[data-route="/admin/auth/user/"]').click()
+        await archiveFrame(page).locator('body').waitFor({ timeout: 120000 })
         await archiveFrame(page).locator('#content-main').waitFor({ timeout: 120000 })
         await page.screenshot({
             animations: 'disabled',
@@ -199,7 +215,10 @@ const captureRealScreens = async ({ dataDir, port, containerName }) => {
         })
 
         await page.locator('[data-route="/public/"]').click()
-        const snapshotHref = await archiveFrame(page).locator('a[href*="/archive/"]').evaluateAll(links => links
+        await archiveFrame(page).locator('body').waitFor({ timeout: 120000 })
+        const snapshotLinks = archiveFrame(page).locator('a[href*="/archive/"]')
+        await snapshotLinks.first().waitFor({ timeout: 120000 })
+        const snapshotHref = await snapshotLinks.evaluateAll(links => links
             .map(link => link.getAttribute('href'))
             .find(href => href && /^\/archive\/[^/]+\/index\.html$/.test(href)))
         if (!snapshotHref) {

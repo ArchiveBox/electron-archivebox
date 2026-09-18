@@ -1,8 +1,10 @@
 const { app, BrowserWindow, ipcMain, Menu, shell, Tray } = require('electron')
 const fs = require('node:fs/promises')
+const http = require('node:http')
+const net = require('node:net')
 const os = require('node:os')
 const path = require('node:path')
-const { pathToFileURL } = require('node:url')
+const { URL } = require('node:url')
 const { createDockerClient } = require('./docker-client')
 
 const DATA_DIR = process.env.ARCHIVEBOX_DATA_DIR || path.join(os.homedir(), 'archivebox')
@@ -12,12 +14,19 @@ const BIND_PORT = Number.isInteger(configuredPort) && configuredPort > 0 ? confi
 const DOCKER_IMAGE = 'archivebox/archivebox:latest'
 const DOCKER_CMD = ['archivebox', 'server', '--init', `${BIND_HOST}:${BIND_PORT}`]
 const ARCHIVEBOX_ORIGIN = `http://127.0.0.1:${BIND_PORT}`
-const APP_FILE_URL_PREFIX = pathToFileURL(__dirname).href
+const SHELL_FILES = Object.freeze({
+    '/': { contentType: 'text/html; charset=utf-8', file: 'index.html' },
+    '/index.html': { contentType: 'text/html; charset=utf-8', file: 'index.html' },
+    '/renderer.js': { contentType: 'text/javascript; charset=utf-8', file: 'renderer.js' },
+    '/styles.css': { contentType: 'text/css; charset=utf-8', file: 'styles.css' },
+})
 
 let mainWindow = null
 let tray = null
 let docker = null
 let container = null
+let shellServer = null
+let shellOrigin = null
 let quitting = false
 
 const callDocker = (dockerObject, method, ...args) => new Promise((resolve, reject) => {
@@ -43,10 +52,7 @@ const followProgress = stream => new Promise((resolve, reject) => {
 const isAllowedNavigation = url => {
     try {
         const parsedUrl = new URL(url)
-        if (parsedUrl.protocol === 'file:') {
-            return parsedUrl.href.startsWith(APP_FILE_URL_PREFIX)
-        }
-        return parsedUrl.origin === ARCHIVEBOX_ORIGIN
+        return parsedUrl.origin === ARCHIVEBOX_ORIGIN || parsedUrl.origin === shellOrigin
     } catch {
         return false
     }
@@ -87,6 +93,68 @@ const configureWindowSecurity = window => {
         void shell.openExternal(url)
         return { action: 'deny' }
     })
+}
+
+const getFreePort = () => new Promise((resolve, reject) => {
+    const server = net.createServer()
+    server.once('error', reject)
+    server.listen(0, '127.0.0.1', () => {
+        const { port } = server.address()
+        server.close(() => resolve(port))
+    })
+})
+
+const startShellServer = async () => {
+    const port = await getFreePort()
+    shellOrigin = `http://127.0.0.1:${port}`
+    shellServer = http.createServer(async (request, response) => {
+        if (request.method !== 'GET' && request.method !== 'HEAD') {
+            response.writeHead(405, { Allow: 'GET, HEAD' })
+            response.end()
+            return
+        }
+
+        const pathname = new URL(request.url || '/', shellOrigin).pathname
+        const asset = SHELL_FILES[pathname]
+        if (!asset) {
+            response.writeHead(404)
+            response.end('Not found')
+            return
+        }
+
+        try {
+            const content = await fs.readFile(path.join(__dirname, asset.file))
+            response.writeHead(200, {
+                'Cache-Control': 'no-store',
+                'Content-Type': asset.contentType,
+            })
+            if (request.method === 'HEAD') {
+                response.end()
+            } else {
+                response.end(content)
+            }
+        } catch (error) {
+            response.writeHead(500)
+            response.end('Unable to load the desktop shell')
+            console.error(`[X] Failed to serve ${pathname}: ${error.message}`)
+        }
+    })
+
+    await new Promise((resolve, reject) => {
+        shellServer.once('error', reject)
+        shellServer.listen(port, '127.0.0.1', resolve)
+    })
+}
+
+const stopShellServer = async () => {
+    if (!shellServer) {
+        return
+    }
+
+    const currentServer = shellServer
+    shellServer = null
+    shellOrigin = null
+    await new Promise(resolve => currentServer.close(resolve))
 }
 
 const createApplicationMenu = () => {
@@ -189,9 +257,8 @@ const createWindow = async () => {
 const openWindow = async url => {
     try {
         const window = await createWindow()
-        await window.loadFile(path.join(__dirname, 'index.html'), {
-            query: { route: routeForUrl(url || `${ARCHIVEBOX_ORIGIN}/public/`) },
-        })
+        const route = routeForUrl(url || `${ARCHIVEBOX_ORIGIN}/public/`)
+        await window.loadURL(`${shellOrigin}/index.html?route=${encodeURIComponent(route)}`)
         window.focus()
     } catch (error) {
         console.error(`[X] Failed to open ArchiveBox window: ${error.message}`)
@@ -326,6 +393,7 @@ const startDocker = async () => {
 const quitApp = async () => {
     quitting = true
     await stopContainer()
+    await stopShellServer()
     app.quit()
 }
 
@@ -435,17 +503,18 @@ const bootstrap = async () => {
     })
 
     app.on('before-quit', event => {
-        if (quitting || !container) {
+        if (quitting || (!container && !shellServer)) {
             return
         }
 
         event.preventDefault()
         quitting = true
-        void stopContainer().finally(() => app.quit())
+        void Promise.all([stopContainer(), stopShellServer()]).finally(() => app.quit())
     })
 
     await app.whenReady()
 
+    await startShellServer()
     createApplicationMenu()
     createTray()
     void startDocker()
