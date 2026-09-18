@@ -18,7 +18,7 @@ const captureScreen = async screen => {
 
     try {
         const page = await electronApp.firstWindow()
-        await page.waitForSelector(`[data-screen="${screen}"]`)
+        await page.waitForSelector('.app-layout')
         await page.screenshot({
             animations: 'disabled',
             path: path.join(OUTPUT_DIR, `${screen}.png`),

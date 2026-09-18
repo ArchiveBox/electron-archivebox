@@ -43,71 +43,120 @@ const SCREENS = {
     },
 }
 
+const NAVIGATION = [
+    ['archive', 'View Archive'],
+    ['add-urls', 'Add URLs'],
+    ['manage-users', 'Manage Users'],
+    ['settings', 'Settings'],
+]
+
 const version = name => window.archivebox?.versions?.[name] || 'unknown'
 
-const renderScreen = requestedScreen => {
-    const screenName = Object.prototype.hasOwnProperty.call(SCREENS, requestedScreen)
-        ? requestedScreen
-        : 'archive'
-    const screen = SCREENS[screenName]
-    const app = document.getElementById('app')
-    if (!app) {
-        return
+const createElement = (tagName, className, text) => {
+    const element = document.createElement(tagName)
+    if (className) {
+        element.className = className
     }
+    if (text) {
+        element.textContent = text
+    }
+    return element
+}
 
-    document.title = `${screen.label} · ArchiveBox`
-    app.innerHTML = `
-      <div class="app-layout" data-screen="${screenName}">
-        <aside class="sidebar">
-          <div class="brand">
-            <span class="brand-mark">A</span>
-            <span>ArchiveBox</span>
-          </div>
-          <p class="sidebar-caption">Desktop</p>
-          <nav class="navigation" aria-label="Primary navigation">
-            <a class="nav-link${screenName === 'archive' ? ' active' : ''}" href="?no_redirect=1&screen=archive" data-screen-link="archive">View Archive</a>
-            <a class="nav-link${screenName === 'add-urls' ? ' active' : ''}" href="?no_redirect=1&screen=add-urls" data-screen-link="add-urls">Add URLs</a>
-            <a class="nav-link${screenName === 'manage-users' ? ' active' : ''}" href="?no_redirect=1&screen=manage-users" data-screen-link="manage-users">Manage Users</a>
-            <a class="nav-link${screenName === 'settings' ? ' active' : ''}" href="?no_redirect=1&screen=settings" data-screen-link="settings">Settings</a>
-          </nav>
-          <div class="sidebar-footer">
-            <span class="status-dot"></span>
-            <span>Docker connected</span>
-          </div>
-        </aside>
-        <main class="content">
-          <header class="topbar">
-            <span class="eyebrow">ArchiveBox desktop</span>
-            <span class="status-pill"><span class="status-dot"></span> Service online</span>
-          </header>
-          <section class="hero">
-            <p class="section-label">${screen.label}</p>
-            <h1>${screen.heading}</h1>
-            <p class="hero-description">${screen.description}</p>
-            <button class="primary-button" type="button" data-screen-link="${screenName}">${screen.label}</button>
-          </section>
-          <section class="stats" aria-label="ArchiveBox status">
-            ${screen.stats.map(([value, label]) => `<div class="stat-card"><strong>${value}</strong><span>${label}</span></div>`).join('')}
-          </section>
-          <section class="detail-card">
-            <div>
-              <p class="section-label">Local service</p>
-              <h2>ArchiveBox is ready</h2>
-              <p>Everything runs locally through Docker. Your archive stays on this device.</p>
-            </div>
-            <span class="connection-badge">Connected</span>
-          </section>
-          <footer class="app-footer">Electron ${version('electron')} · Chrome ${version('chrome')} · Node ${version('node')}</footer>
-        </main>
-      </div>
-    `
+const createNavigationLink = (screenName, label, active) => {
+    const link = createElement('a', `nav-link${active ? ' active' : ''}`, label)
+    link.href = `?no_redirect=1&screen=${screenName}`
+    link.dataset.screenLink = screenName
+    return link
+}
 
+const addScreenNavigation = app => {
     app.querySelectorAll('[data-screen-link]').forEach(link => {
         link.addEventListener('click', event => {
             event.preventDefault()
             renderScreen(link.dataset.screenLink)
         })
     })
+}
+
+const renderScreen = requestedScreen => {
+    const screen = Object.prototype.hasOwnProperty.call(SCREENS, requestedScreen)
+        ? SCREENS[requestedScreen]
+        : SCREENS.archive
+    const app = document.getElementById('app')
+    if (!app) {
+        return
+    }
+
+    document.title = `${screen.label} · ArchiveBox`
+    const layout = createElement('div', 'app-layout')
+    const sidebar = createElement('aside', 'sidebar')
+    const brand = createElement('div', 'brand')
+    brand.append(
+        createElement('span', 'brand-mark', 'A'),
+        createElement('span', null, 'ArchiveBox')
+    )
+    sidebar.append(brand, createElement('p', 'sidebar-caption', 'Desktop'))
+
+    const navigation = createElement('nav', 'navigation')
+    navigation.setAttribute('aria-label', 'Primary navigation')
+    NAVIGATION.forEach(([screenName, label]) => {
+        navigation.append(createNavigationLink(screenName, label, screenName === requestedScreen))
+    })
+    sidebar.append(navigation)
+
+    const sidebarFooter = createElement('div', 'sidebar-footer')
+    sidebarFooter.append(createElement('span', 'status-dot'), createElement('span', null, 'Docker connected'))
+    sidebar.append(sidebarFooter)
+
+    const content = createElement('main', 'content')
+    const topbar = createElement('header', 'topbar')
+    topbar.append(
+        createElement('span', 'eyebrow', 'ArchiveBox desktop'),
+        createElement('span', 'status-pill', '●  Service online')
+    )
+    content.append(topbar)
+
+    const hero = createElement('section', 'hero')
+    hero.append(
+        createElement('p', 'section-label', screen.label),
+        createElement('h1', null, screen.heading),
+        createElement('p', 'hero-description', screen.description)
+    )
+    const primaryButton = createElement('button', 'primary-button', screen.label)
+    primaryButton.type = 'button'
+    primaryButton.dataset.screenLink = requestedScreen
+    hero.append(primaryButton)
+    content.append(hero)
+
+    const stats = createElement('section', 'stats')
+    stats.setAttribute('aria-label', 'ArchiveBox status')
+    screen.stats.forEach(([value, label]) => {
+        const statCard = createElement('div', 'stat-card')
+        statCard.append(createElement('strong', null, value), createElement('span', null, label))
+        stats.append(statCard)
+    })
+    content.append(stats)
+
+    const detailCard = createElement('section', 'detail-card')
+    const detail = createElement('div')
+    detail.append(
+        createElement('p', 'section-label', 'Local service'),
+        createElement('h2', null, 'ArchiveBox is ready'),
+        createElement('p', null, 'Everything runs locally through Docker. Your archive stays on this device.')
+    )
+    detailCard.append(detail, createElement('span', 'connection-badge', 'Connected'))
+    content.append(detailCard)
+
+    content.append(createElement(
+        'footer',
+        'app-footer',
+        `Electron ${version('electron')} · Chrome ${version('chrome')} · Node ${version('node')}`
+    ))
+    layout.append(sidebar, content)
+    app.replaceChildren(layout)
+    app.className = ''
+    addScreenNavigation(app)
 }
 
 window.addEventListener('DOMContentLoaded', () => {
