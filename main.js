@@ -1,4 +1,4 @@
-const { app, BrowserWindow, Menu, shell, Tray } = require('electron')
+const { app, BrowserWindow, ipcMain, Menu, shell, Tray } = require('electron')
 const fs = require('node:fs/promises')
 const os = require('node:os')
 const path = require('node:path')
@@ -52,6 +52,24 @@ const isAllowedNavigation = url => {
     }
 }
 
+const routeForUrl = url => {
+    try {
+        const pathname = new URL(url).pathname
+        if (pathname === '/add/' || pathname.startsWith('/accounts/')) {
+            return '/add/'
+        }
+        if (pathname.startsWith('/admin/')) {
+            return '/admin/auth/user/'
+        }
+        if (pathname.startsWith('/archive/')) {
+            return pathname
+        }
+    } catch {
+        // Fall back to the archive route when a tray action has no URL.
+    }
+    return '/public/'
+}
+
 const configureWindowSecurity = window => {
     const handleNavigation = (event, url) => {
         if (!isAllowedNavigation(url)) {
@@ -71,6 +89,74 @@ const configureWindowSecurity = window => {
     })
 }
 
+const createApplicationMenu = () => {
+    Menu.setApplicationMenu(Menu.buildFromTemplate([
+        {
+            label: 'File',
+            submenu: [
+                {
+                    label: 'View Archive',
+                    click: () => void openWindow(`${ARCHIVEBOX_ORIGIN}/public/`),
+                },
+                {
+                    label: 'Add URLs',
+                    click: () => void openWindow(`${ARCHIVEBOX_ORIGIN}/add/`),
+                },
+                { type: 'separator' },
+                {
+                    label: 'Quit ArchiveBox',
+                    accelerator: process.platform === 'darwin' ? 'CmdOrCtrl+Q' : 'Alt+F4',
+                    click: () => void quitApp(),
+                },
+            ],
+        },
+        {
+            label: 'Archive',
+            submenu: [
+                {
+                    label: 'View Archive',
+                    click: () => void openWindow(`${ARCHIVEBOX_ORIGIN}/public/`),
+                },
+                {
+                    label: 'Add URLs',
+                    click: () => void openWindow(`${ARCHIVEBOX_ORIGIN}/add/`),
+                },
+                {
+                    label: 'Manage Users',
+                    click: () => void openWindow(`${ARCHIVEBOX_ORIGIN}/admin/auth/user/`),
+                },
+            ],
+        },
+        {
+            label: 'View',
+            submenu: [
+                { role: 'reload' },
+                { role: 'toggleDevTools' },
+                { type: 'separator' },
+                { role: 'resetZoom' },
+                { role: 'zoomIn' },
+                { role: 'zoomOut' },
+            ],
+        },
+        {
+            label: 'Window',
+            submenu: [
+                { role: 'minimize' },
+                { role: 'togglefullscreen' },
+            ],
+        },
+        {
+            label: 'Help',
+            submenu: [
+                {
+                    label: 'ArchiveBox on GitHub',
+                    click: () => void shell.openExternal('https://github.com/ArchiveBox/ArchiveBox'),
+                },
+            ],
+        },
+    ]))
+}
+
 const createWindow = async () => {
     if (mainWindow) {
         return mainWindow
@@ -79,6 +165,7 @@ const createWindow = async () => {
     mainWindow = new BrowserWindow({
         width: 1280,
         height: 800,
+        frame: false,
         show: false,
         backgroundColor: '#f7f8fc',
         webPreferences: {
@@ -102,14 +189,34 @@ const createWindow = async () => {
 const openWindow = async url => {
     try {
         const window = await createWindow()
-        if (url) {
-            await window.loadURL(url)
-        }
+        await window.loadFile(path.join(__dirname, 'index.html'), {
+            query: { route: routeForUrl(url || `${ARCHIVEBOX_ORIGIN}/public/`) },
+        })
         window.focus()
     } catch (error) {
         console.error(`[X] Failed to open ArchiveBox window: ${error.message}`)
     }
 }
+
+ipcMain.on('window-close', event => {
+    BrowserWindow.fromWebContents(event.sender)?.close()
+})
+
+ipcMain.on('window-maximize', event => {
+    const window = BrowserWindow.fromWebContents(event.sender)
+    if (!window) {
+        return
+    }
+    if (window.isMaximized()) {
+        window.unmaximize()
+    } else {
+        window.maximize()
+    }
+})
+
+ipcMain.on('window-minimize', event => {
+    BrowserWindow.fromWebContents(event.sender)?.minimize()
+})
 
 const trayIcon = () => path.join(__dirname, 'icon.png')
 
@@ -339,6 +446,7 @@ const bootstrap = async () => {
 
     await app.whenReady()
 
+    createApplicationMenu()
     createTray()
     void startDocker()
 }

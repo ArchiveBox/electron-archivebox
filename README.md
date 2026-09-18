@@ -63,5 +63,7 @@ npm run package
 The Windows CI job builds the Squirrel installer. A compatible Linux CI job
 starts a real ArchiveBox Docker collection, creates a real snapshot, performs a
 real Add URLs action in the Electron window, and captures the View Archive, Add
-URLs, Manage Users, and Snapshot Detail screens. The generated screenshots are published in the
+URLs, Manage Users, and Snapshot Detail screens. Each image includes the complete desktop window,
+including the title bar, window controls, application menubar, navigation toolbar, and real ArchiveBox
+content. The generated screenshots are published in the
 [desktop screen gallery](https://archivebox.github.io/electron-archivebox/).

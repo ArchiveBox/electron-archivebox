@@ -135,14 +135,15 @@ const cleanupDataDir = async dataDir => {
     }
 }
 
-const login = async (page, origin) => {
-    await page.goto(`${origin}/accounts/login/?next=/add/`)
-    await page.locator('input[name="username"]').fill(USERNAME)
-    await page.locator('input[name="password"]').fill(PASSWORD)
-    await page.locator('input[type="submit"], button[type="submit"]').first().click()
-    await page.waitForURL(url => !url.pathname.includes('/login/'), { timeout: 120000 })
-    await page.goto(`${origin}/add/`)
-    await page.waitForSelector('#add-form', { timeout: 120000 })
+const archiveFrame = page => page.frameLocator('#archivebox-frame')
+
+const login = async page => {
+    const frame = archiveFrame(page)
+    await frame.locator('input[name="username"]').waitFor({ timeout: 120000 })
+    await frame.locator('input[name="username"]').fill(USERNAME)
+    await frame.locator('input[name="password"]').fill(PASSWORD)
+    await frame.locator('input[type="submit"], button[type="submit"]').first().click()
+    await frame.locator('#add-form').waitFor({ timeout: 120000 })
 }
 
 const captureRealScreens = async ({ dataDir, port, containerName }) => {
@@ -159,49 +160,55 @@ const captureRealScreens = async ({ dataDir, port, containerName }) => {
 
     try {
         const page = await electronApp.firstWindow({ timeout: 180000 })
-        await page.waitForURL(url => url.origin === origin && url.pathname.startsWith('/public'), {
-            timeout: 180000,
-        })
+        await page.locator('#archivebox-frame').waitFor({ state: 'attached', timeout: 180000 })
+        await archiveFrame(page).locator('body').waitFor({ timeout: 180000 })
         await page.screenshot({
             animations: 'disabled',
+            fullPage: true,
             path: path.join(OUTPUT_DIR, 'archive.png'),
         })
 
-        await login(page, origin)
-        await page.locator('#id_url').fill('https://example.org')
-        const archiveMethods = page.locator('#id_archive_methods')
+        await page.locator('[data-route="/add/"]').click()
+        await login(page)
+        await archiveFrame(page).locator('#id_url').fill('https://example.org')
+        const archiveMethods = archiveFrame(page).locator('#id_archive_methods')
         if (await archiveMethods.count()) {
             await archiveMethods.selectOption('title')
         }
         await page.screenshot({
             animations: 'disabled',
+            fullPage: true,
             path: path.join(OUTPUT_DIR, 'add-urls.png'),
         })
 
-        await page.locator('#submit').click()
-        await page.waitForSelector('#stdout', { timeout: 180000 })
+        await archiveFrame(page).locator('#submit').click()
+        await archiveFrame(page).locator('#stdout').waitFor({ timeout: 180000 })
 
-        await page.goto(`${origin}/admin/auth/user/`)
-        await page.waitForSelector('#content-main', { timeout: 120000 })
+        await page.locator('[data-route="/admin/auth/user/"]').click()
+        await archiveFrame(page).locator('#content-main').waitFor({ timeout: 120000 })
         await page.screenshot({
             animations: 'disabled',
+            fullPage: true,
             path: path.join(OUTPUT_DIR, 'manage-users.png'),
         })
 
-        await page.goto(`${origin}/public/`)
-        const snapshotHref = await page.locator('a[href*="/archive/"]').evaluateAll(links => links
+        await page.locator('[data-route="/public/"]').click()
+        const snapshotHref = await archiveFrame(page).locator('a[href*="/archive/"]').evaluateAll(links => links
             .map(link => link.getAttribute('href'))
             .find(href => href && /^\/archive\/[^/]+\/index\.html$/.test(href)))
         if (!snapshotHref) {
             throw new Error('The real ArchiveBox collection did not expose a snapshot link')
         }
-        await page.goto(new URL(snapshotHref, origin).href)
-        await page.waitForLoadState('domcontentloaded')
+        await page.locator('#archivebox-frame').evaluate((frame, href) => {
+            frame.src = href
+        }, new URL(snapshotHref, origin).href)
+        await archiveFrame(page).locator('body').waitFor({ timeout: 120000 })
         await page.screenshot({
             animations: 'disabled',
+            fullPage: true,
             path: path.join(OUTPUT_DIR, 'snapshot.png'),
         })
-        console.log('Captured real ArchiveBox archive, add, admin, and snapshot screens')
+        console.log('Captured full-window archive, add, admin, and snapshot screens')
     } finally {
         await electronApp.close()
     }
