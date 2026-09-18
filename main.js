@@ -1,9 +1,9 @@
 const { app, BrowserWindow, Menu, shell, Tray } = require('electron')
-const Docker = require('dockerode')
 const fs = require('node:fs/promises')
 const os = require('node:os')
 const path = require('node:path')
 const { pathToFileURL } = require('node:url')
+const { createDockerClient } = require('./docker-client')
 
 const DATA_DIR = process.env.ARCHIVEBOX_DATA_DIR || path.join(os.homedir(), 'archivebox')
 const BIND_HOST = '0.0.0.0'
@@ -140,7 +140,7 @@ const stopContainer = async () => {
 }
 
 const pullImage = async () => {
-    docker = docker || new Docker({ timeout: 100000 })
+    docker = docker || createDockerClient({ timeout: 100000 })
     const pullStream = await callDocker(docker, 'pull', DOCKER_IMAGE)
     await followProgress(pullStream)
 }
@@ -174,7 +174,7 @@ const startDocker = async () => {
 
     try {
         console.log('[+] Connecting to Docker daemon...')
-        docker = docker || new Docker({ timeout: 100000 })
+        docker = docker || createDockerClient({ timeout: 100000 })
         await callDocker(docker, 'ping')
         await fs.mkdir(DATA_DIR, { recursive: true })
         console.log('[+] Pulling Docker image...')

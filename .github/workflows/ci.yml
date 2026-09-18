@@ -52,6 +52,8 @@ jobs:
         run: npm ci
       - name: Set up Docker Engine
         uses: docker/setup-docker-action@v5
+        with:
+          set-host: true
       - name: Verify Docker daemon
         run: docker info
       - name: Lint

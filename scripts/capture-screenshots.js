@@ -2,8 +2,8 @@ const fs = require('node:fs/promises')
 const net = require('node:net')
 const os = require('node:os')
 const path = require('node:path')
-const Docker = require('dockerode')
 const { _electron: electron } = require('playwright')
+const { createDockerClient } = require('../docker-client')
 
 const ROOT_DIR = path.resolve(__dirname, '..')
 const OUTPUT_DIR = path.resolve(process.env.SCREENSHOT_DIR || path.join(ROOT_DIR, 'artifacts', 'screenshots'))
@@ -12,7 +12,7 @@ const USERNAME = 'archivebox'
 const PASSWORD = 'archivebox-e2e-password'
 const EMAIL = 'archivebox@example.com'
 
-const docker = new Docker({ timeout: 120000 })
+const docker = createDockerClient({ timeout: 120000 })
 
 const callDocker = (dockerObject, method, ...args) => new Promise((resolve, reject) => {
     dockerObject[method](...args, (error, result) => {
