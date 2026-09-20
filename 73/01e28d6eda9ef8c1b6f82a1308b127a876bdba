@@ -1,0 +1,16 @@
+.github/pages/base/marquee.js
+  h_923c208e183a7b 16
+.github/pages/verify.py
+  h_923c208e183a7b 88-89,91-118
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "7301e28d6eda9ef8c1b6f82a1308b127a876bdba",
+  "prompts": {},
+  "humans": {
+    "h_923c208e183a7b": {
+      "author": "Nick Sweeting <git@sweeting.me>"
+    }
+  }
+}
