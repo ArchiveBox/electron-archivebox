@@ -1,8 +1,8 @@
 // Highlight platform choices without changing links, tabs, or navigation.
 (() => {
-  const ua = navigator.userAgent;
+  const ua = window.navigator.userAgent;
   const platform = /Android/i.test(ua) ? 'android'
-    : /iPhone|iPad|iPod/i.test(ua) || (/Macintosh/i.test(ua) && navigator.maxTouchPoints > 1) ? 'ios'
+    : /iPhone|iPad|iPod/i.test(ua) || (/Macintosh/i.test(ua) && window.navigator.maxTouchPoints > 1) ? 'ios'
     : /Windows/i.test(ua) ? 'windows'
     : /Macintosh|Mac OS X/i.test(ua) ? 'macos'
     : /Linux/i.test(ua) ? 'linux' : '';

@@ -1,61 +1,45 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run --no-project python
 """Restore successful main CI captures, retaining their original provenance."""
 
 import argparse
 import base64
-from concurrent.futures import ThreadPoolExecutor
 import json
-from pathlib import Path
 import re
-import subprocess
+import sys
+from concurrent.futures import ThreadPoolExecutor
+from pathlib import Path
 from urllib.request import urlopen
 
 REPO = "ArchiveBox/electron-archivebox"
 PLATFORMS = ("linux", "windows", "macos")
+ARTIFACT_NAMES = ("site-screenshots", *(f"archivebox-screenshots-{platform}" for platform in PLATFORMS))
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument("destination", type=Path)
 args = parser.parse_args()
 args.destination.mkdir(parents=True, exist_ok=True)
 
 
-def api(path):
-    return json.loads(subprocess.check_output(["gh", "api", f"repos/{REPO}/{path}"]))
-
-
-def trusted(run):
-    return (
-        run["head_repository"]["full_name"] == REPO
-        and run["head_branch"] == "main"
-        and run["event"] in ("push", "workflow_dispatch")
-        and run["path"] == ".github/workflows/ci.yml"
-        and run["conclusion"] == "success"
-    )
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / ".github/pages"))
+import artifacts
 
 
 def restore_artifact():
-    page = 1
-    while True:
-        runs = api(f"actions/workflows/ci.yml/runs?branch=main&status=success&per_page=50&page={page}")["workflow_runs"]
-        for run in runs:
-            if not trusted(run):
-                continue
-            rows = subprocess.check_output([
-                "gh", "api", f"repos/{REPO}/actions/runs/{run['id']}/artifacts?per_page=100",
-                "--paginate", "--jq", ".artifacts[] | @json",
-            ], text=True)
-            names = {a["name"] for line in rows.splitlines() if not (a := json.loads(line))["expired"]}
-            downloads = [("site-screenshots", args.destination)] if "site-screenshots" in names else [
-                (f"archivebox-screenshots-{platform}", args.destination / platform) for platform in PLATFORMS
+    for run in artifacts.runs(REPO, "ci.yml", "main", artifact_names=ARTIFACT_NAMES):
+        names = artifacts.names(REPO, run)
+        downloads = (
+            [("site-screenshots", args.destination)]
+            if "site-screenshots" in names
+            else [
+                (f"archivebox-screenshots-{platform}", args.destination / platform)
+                for platform in PLATFORMS
             ]
-            if not all(name in names for name, _ in downloads):
-                continue
-            for name, destination in downloads:
-                subprocess.run(["gh", "run", "download", str(run["id"]), "--repo", REPO,
-                                "--name", name, "--dir", str(destination)], check=True)
-            return run
-        if len(runs) < 50:
-            return None
-        page += 1
+        )
+        if not all(name in names for name, _ in downloads):
+            continue
+        for name, destination in downloads:
+            artifacts.download(REPO, run, name, destination)
+        return run
+    return None
 
 
 run = restore_artifact()
@@ -83,19 +67,22 @@ if run is None:
             files.append(f"{platform}/{capture['file']}")
     if len(run_ids) != 1 or not re.fullmatch(r"[1-9]\d*", next(iter(run_ids))):
         raise ValueError("Published captures must belong to one CI run")
-    run = api(f"actions/runs/{next(iter(run_ids))}")
-    if not trusted(run):
+    run = artifacts.api(REPO, f"actions/runs/{next(iter(run_ids))}")
+    if not artifacts.trusted(run, REPO, "ci.yml", "main"):
         raise ValueError("Published captures must come from successful main CI")
     with ThreadPoolExecutor(max_workers=8) as pool:
         list(pool.map(fetch, files))
 
-package = api(f"contents/package.json?ref={run['head_sha']}")
+package = artifacts.api(REPO, f"contents/package.json?ref={run['head_sha']}")
 package = json.loads(base64.b64decode(package["content"]))
 major, minor, patch = map(int, package["version"].split("."))
 increment = run["run_number"] - package.get("releaseRunBase", 0)
 if increment < 0:
     raise ValueError("CI run predates this release series")
-metadata = {"commit": run["head_sha"], "runId": str(run["id"]),
-            "appVersion": f"{major}.{minor}.{patch + increment}"}
+metadata = {
+    "commit": run["head_sha"],
+    "runId": str(run["id"]),
+    "appVersion": f"{major}.{minor}.{patch + increment}",
+}
 (args.destination / "capture-run.json").write_text(json.dumps(metadata) + "\n")
 print(f"Restored captures from successful main CI run {run['id']} ({run['head_sha']})")

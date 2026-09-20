@@ -3,6 +3,12 @@ name: CI
 on:
   push:
     branches: [main]
+    # Marketing-only updates publish independently through pages.yml.
+    paths-ignore:
+      - '.github/pages/**'
+      - '.github/workflows/pages.yml'
+      - 'docs/**'
+      - 'README.md'
   pull_request:
   workflow_dispatch:
 
