@@ -6,11 +6,14 @@ const { execFileSync } = require('node:child_process')
 const root = path.resolve(__dirname, '..')
 const git = (...args) => execFileSync('git', args, { cwd: root, encoding: 'utf8' }).trim()
 const releaseVersion = () => {
-    const base = JSON.parse(git('show', 'HEAD:package.json')).version
+    const { version: base, releaseRunBase = 0 } = JSON.parse(git('show', 'HEAD:package.json'))
     if (process.env.GITHUB_REF !== 'refs/heads/main') return base
     assert.match(process.env.GITHUB_RUN_NUMBER || '', /^[1-9]\d*$/)
+    // Start this version series at its base instead of adding all prior CI runs.
+    const increment = Number(process.env.GITHUB_RUN_NUMBER) - releaseRunBase
+    assert.ok(Number.isSafeInteger(releaseRunBase) && increment >= 0, 'CI run predates this release series')
     const [major, minor, patch] = base.split('.').map(Number)
-    return `${major}.${minor}.${patch + Number(process.env.GITHUB_RUN_NUMBER)}`
+    return `${major}.${minor}.${patch + increment}`
 }
 
 // Only the exact, reproducible package-version stamp is excluded from source dirtiness.

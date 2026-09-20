@@ -90,9 +90,12 @@ if run is None:
         list(pool.map(fetch, files))
 
 package = api(f"contents/package.json?ref={run['head_sha']}")
-version = json.loads(base64.b64decode(package["content"]))["version"]
-major, minor, patch = map(int, version.split("."))
+package = json.loads(base64.b64decode(package["content"]))
+major, minor, patch = map(int, package["version"].split("."))
+increment = run["run_number"] - package.get("releaseRunBase", 0)
+if increment < 0:
+    raise ValueError("CI run predates this release series")
 metadata = {"commit": run["head_sha"], "runId": str(run["id"]),
-            "appVersion": f"{major}.{minor}.{patch + run['run_number']}"}
+            "appVersion": f"{major}.{minor}.{patch + increment}"}
 (args.destination / "capture-run.json").write_text(json.dumps(metadata) + "\n")
 print(f"Restored captures from successful main CI run {run['id']} ({run['head_sha']})")
