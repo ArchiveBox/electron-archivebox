@@ -16,8 +16,8 @@
 </div>
 
 <p align="center">
-<a href="https://electron.archivebox.io/screenshots/macos/archive.png"><img src="https://electron.archivebox.io/screenshots/macos/archive.png" width="49%" alt="ArchiveBox Desktop on Mac: saved pages with titles, URLs, and tags"></a>
-<a href="https://electron.archivebox.io/screenshots/macos/activity.png"><img src="https://electron.archivebox.io/screenshots/macos/activity.png" width="49%" alt="ArchiveBox Desktop on Mac: live archiving activity and download progress"></a>
+<a href="docs/screenshots/archive-macos.png"><img src="docs/screenshots/archive-macos.png" width="49%" alt="ArchiveBox Desktop on Mac: saved pages with titles, URLs, and tags"></a>
+<a href="docs/screenshots/activity-macos.png"><img src="docs/screenshots/activity-macos.png" width="49%" alt="ArchiveBox Desktop on Mac: live archiving activity and download progress"></a>
 <br><sub>Your saved pages &nbsp; · &nbsp; Live archiving progress — shown on macOS. Click either screenshot to enlarge.</sub>
 </p>
 
