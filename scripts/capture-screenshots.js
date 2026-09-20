@@ -219,12 +219,14 @@ const captureRealScreens = async ({ dataDir, userDataDir, port, containerName })
         await frame.locator('#id_password1').fill('reader-desktop-password')
         await frame.locator('#id_password2').fill('reader-desktop-password')
         await capture(page, 'add-user', 'Add a user', 'The real user creation form is filled before saving a second local account.', ['Django Add user form', 'New username entered through form fields'])
-        await frame.locator('input[name="_save"]').click()
+        await frame.locator('[name="_save"]').click()
         await frame.locator('#id_email').waitFor()
         assert.equal(await frame.locator('#id_username').inputValue(), 'reader')
         await capture(page, 'edit-user', 'Edit a user', 'The newly saved reader account opens in the actual user editor.', ['User creation submitted', 'Persisted reader account in change form'])
         await frame.locator('#id_email').fill('reader@example.com')
-        await frame.locator('input[name="_save"]').click()
+        await frame.getByRole('button', { name: '💾 Save', exact: true }).click()
+        await frame.locator('.success').filter({ hasText: 'changed successfully' }).waitFor()
+        await page.locator('[data-route="/admin/auth/user/"]').click()
         await frame.locator('#result_list').waitFor()
         await frame.locator('#result_list tr').filter({ hasText: 'reader@example.com' }).waitFor()
 
@@ -234,12 +236,16 @@ const captureRealScreens = async ({ dataDir, userDataDir, port, containerName })
         await page.locator('#stop-service').click()
         await page.locator('#close-settings').click()
         await page.locator('#service-panel[data-state="stopped"]').waitFor()
+        await assert.rejects(callDocker(docker.getContainer(containerName), 'inspect'), error => error.statusCode === 404, 'Stop removes the actual Docker container')
         await capture(page, 'stopped', 'Service stopped', 'Stopping ArchiveBox from Settings shuts down its real Docker container.', ['Stop button clicked', 'App reports service stopped'])
         await page.locator('#start-service').click()
         await waitForRunning(page)
         await page.locator('[data-route="/public/"]').click()
         await frame.locator('#result_list tbody tr').filter({ hasText: 'https://example.com' }).locator('.field-title_str').filter({ hasText: 'Example Domain' }).waitFor()
         assert.equal(await frame.locator('#result_list tbody tr').count(), 2)
+        const restartedContainer = await callDocker(docker.getContainer(containerName), 'inspect')
+        assert.equal(restartedContainer.State.Running, true)
+        assert.ok(restartedContainer.HostConfig.Binds.includes(`${dataDir}:/data`), 'Restart uses the same collection directory')
         await capture(page, 'restarted', 'Collection after restart', 'Restarting the Docker service preserves both saved pages and their extracted titles.', ['Real service stop/start', 'Both saved pages survive restart'])
     } catch (error) {
         await capture(page, 'failure', 'Capture failure', error.message, []).catch(() => {})
@@ -248,17 +254,18 @@ const captureRealScreens = async ({ dataDir, userDataDir, port, containerName })
         throw error
     } finally {
         await electronApp.close()
+        await assert.rejects(callDocker(docker.getContainer(containerName), 'inspect'), error => error.statusCode === 404, 'Quitting removes the actual Docker container')
     }
 }
 
-const unavailableDockerHost = dataDir => process.platform === 'win32'
+const unavailableDockerHost = () => process.platform === 'win32'
     ? `npipe:////./pipe/archivebox-unavailable-${process.pid}`
-    : `unix://${path.join(dataDir, 'unavailable-docker.sock')}`
+    : `unix://${path.join(os.tmpdir(), `abx-no-docker-${process.pid}.sock`)}`
 
 const captureDockerError = async options => {
     // A real connection failure, not an intercepted Docker response or UI flag.
     const { electronApp, page } = await launch(options.dataDir, options.userDataDir, options.port, options.containerName, {
-        DOCKER_HOST: unavailableDockerHost(options.dataDir), DOCKER_CONTEXT: '',
+        DOCKER_HOST: unavailableDockerHost(), DOCKER_CONTEXT: '',
     })
     try {
         await page.locator('#service-panel[data-state="error"]').waitFor()
@@ -281,7 +288,7 @@ const main = async () => {
     await fs.mkdir(OUTPUT_DIR, { recursive: true })
     try {
         if (STARTUP_ONLY) {
-            const { electronApp, page } = await launch(dataDir, userDataDir, port, containerName, { DOCKER_HOST: unavailableDockerHost(dataDir), DOCKER_CONTEXT: '' })
+            const { electronApp, page } = await launch(dataDir, userDataDir, port, containerName, { DOCKER_HOST: unavailableDockerHost(), DOCKER_CONTEXT: '' })
             try {
                 await page.locator('#setup-form').waitFor()
                 await capture(page, 'setup', 'First-run setup', 'The packaged desktop app opens a fresh collection and requests its administrator account.', ['New empty data directory', 'Visible administrator setup form'])
@@ -304,6 +311,7 @@ const main = async () => {
         const manifest = {
             schemaVersion: 1,
             captureScope: STARTUP_ONLY ? 'startup-only' : 'full',
+            captureMethod: { darwin: 'screencapture-window', linux: 'imagemagick-x11-window', win32: 'win32-screen-copy' }[process.platform],
             packaged: Boolean(process.env.ELECTRON_EXECUTABLE),
             generatedAt: new Date().toISOString(),
             commit: execFileSync('git', ['rev-parse', 'HEAD'], { cwd: ROOT_DIR, encoding: 'utf8' }).trim(),
