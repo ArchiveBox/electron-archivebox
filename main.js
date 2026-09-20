@@ -6,8 +6,8 @@ const path = require('node:path')
 const { createDockerClient } = require('./docker-client')
 
 const DATA_DIR = process.env.ARCHIVEBOX_DATA_DIR || path.join(os.homedir(), 'archivebox')
-const configuredPort = Number(process.env.ARCHIVEBOX_PORT || 8085)
-const PORT = Number.isInteger(configuredPort) && configuredPort > 0 && configuredPort < 65536 ? configuredPort : 8085
+const configuredPort = Number(process.env.ARCHIVEBOX_PORT || 5797)
+const PORT = Number.isInteger(configuredPort) && configuredPort > 0 && configuredPort < 65536 ? configuredPort : 5797
 const IMAGE = 'archivebox/archivebox:dev'
 const ORIGIN = `http://127.0.0.1:${PORT}`
 const SETUP_MARKER = `${DATA_DIR}.desktop-setup-pending`
@@ -109,7 +109,17 @@ const layoutArchiveView = () => {
 }
 const navigateArchive = route => {
     if (typeof route !== 'string' || !route.startsWith('/') || route.startsWith('//')) return
-    if (archiveView && state.phase === 'running') void archiveView.webContents.loadURL(ORIGIN + route).catch(error => console.error(error.message))
+    if (!mainWindow || state.phase !== 'running') return
+    if (!archiveView) {
+        archiveView = new WebContentsView({ webPreferences: { contextIsolation: true, nodeIntegration: false, sandbox: true, webSecurity: true } })
+        configureWindowSecurity(archiveView)
+        archiveView.webContents.on('did-fail-load', (_event, code, description, url, isMainFrame) => {
+            if (isMainFrame && code !== -3 && !quitting) setState('error', `Unable to load ${url}: ${description}. Try restarting ArchiveBox.`)
+        })
+        mainWindow.contentView.addChildView(archiveView)
+        layoutArchiveView()
+    }
+    void archiveView.webContents.loadURL(ORIGIN + route).catch(error => console.error(error.message))
 }
 const openWindow = async route => {
     if (mainWindow) {
@@ -129,12 +139,6 @@ const openWindow = async route => {
         },
     })
     configureWindowSecurity(mainWindow, true)
-    archiveView = new WebContentsView({ webPreferences: { contextIsolation: true, nodeIntegration: false, sandbox: true, webSecurity: true } })
-    configureWindowSecurity(archiveView)
-    archiveView.webContents.on('did-fail-load', (_event, code, description, url, isMainFrame) => {
-        if (isMainFrame && code !== -3 && !quitting) setState('error', `Unable to load ${url}: ${description}. Try restarting ArchiveBox.`)
-    })
-    mainWindow.contentView.addChildView(archiveView)
     mainWindow.on('resize', layoutArchiveView)
     layoutArchiveView()
     mainWindow.once('ready-to-show', () => mainWindow?.show())

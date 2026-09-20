@@ -117,7 +117,15 @@ const launch = async (dataDir, userDataDir, port, containerName, extraEnv = {}) 
     })
     electronApp.process().stdout.on('data', data => process.stdout.write(data))
     electronApp.process().stderr.on('data', data => process.stderr.write(data))
-    const page = await electronApp.firstWindow({ timeout: 30000 })
+    const actual = await electronApp.evaluate(({ BrowserWindow }) => ({
+        shellUrl: BrowserWindow.getAllWindows()[0].webContents.getURL(),
+        dataDir: process.env.ARCHIVEBOX_DATA_DIR,
+        port: process.env.ARCHIVEBOX_PORT,
+    }))
+    assert.equal(actual.dataDir, dataDir, 'The launched app uses the isolated real collection')
+    assert.equal(actual.port, String(port), 'The launched app uses the selected local port')
+    const page = electronApp.context().pages().find(candidate => candidate.url() === actual.shellUrl)
+    assert.ok(page, 'The desktop BrowserWindow shell is attached, independently of native content views')
     page.setDefaultTimeout(30000)
     page.setDefaultNavigationTimeout(120000)
     applications.set(page, electronApp)
@@ -315,7 +323,7 @@ const main = async () => {
             packaged: Boolean(process.env.ELECTRON_EXECUTABLE),
             generatedAt: new Date().toISOString(),
             commit: execFileSync('git', ['rev-parse', 'HEAD'], { cwd: ROOT_DIR, encoding: 'utf8' }).trim(),
-            dirty: Boolean(execFileSync('git', ['status', '--porcelain', '--untracked-files=no'], { cwd: ROOT_DIR, encoding: 'utf8' }).trim()),
+            ...require('./release-version').sourceProvenance(),
             workflowRun: process.env.GITHUB_RUN_ID ? {
                 id: process.env.GITHUB_RUN_ID,
                 url: `https://github.com/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}`,

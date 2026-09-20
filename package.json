@@ -29,9 +29,9 @@
   "devDependencies": {
     "@electron-forge/cli": "^7.11.2",
     "@electron-forge/maker-deb": "^7.11.2",
+    "@electron-forge/maker-dmg": "^7.11.2",
     "@electron-forge/maker-rpm": "^7.11.2",
     "@electron-forge/maker-squirrel": "^7.11.2",
-    "@electron-forge/maker-zip": "^7.11.2",
     "electron": "^44.4.3",
     "eslint": "^10.10.0",
     "playwright": "^1.63.0"
@@ -63,10 +63,14 @@
           }
         },
         {
-          "name": "@electron-forge/maker-zip",
+          "name": "@electron-forge/maker-dmg",
           "platforms": [
             "darwin"
-          ]
+          ],
+          "config": {
+            "name": "ArchiveBox-Mac",
+            "icon": "assets/icon.icns"
+          }
         },
         {
           "name": "@electron-forge/maker-deb",

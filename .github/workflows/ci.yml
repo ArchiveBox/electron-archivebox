@@ -10,8 +10,8 @@ permissions:
   contents: read
 
 concurrency:
-  group: electron-archivebox-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  group: electron-archivebox-${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.ref || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   linux:
@@ -25,6 +25,8 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - name: Set the release version for this main run
+        run: node scripts/release-version.js
       - run: npm run lint
       - run: npm audit --omit=dev
       - name: Install Linux packaging tools
@@ -49,11 +51,16 @@ jobs:
         with:
           name: linux-capture-diagnostics
           path: artifacts/
+      - name: Stage Linux release downloads
+        run: |
+          mkdir -p artifacts/releases
+          cp out/make/deb/x64/*.deb artifacts/releases/ArchiveBox-Linux.deb
+          cp out/make/rpm/x64/*.rpm artifacts/releases/ArchiveBox-Linux.rpm
       - name: Upload Linux installers
         uses: actions/upload-artifact@v4
         with:
           name: archivebox-linux-build
-          path: out/make/**
+          path: artifacts/releases/
           if-no-files-found: error
       - name: Upload verified Linux screenshots
         uses: actions/upload-artifact@v4
@@ -74,6 +81,8 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - name: Set the release version for this main run
+        run: node scripts/release-version.js
       - run: npm run lint
       - name: Build Windows installer
         run: npm run make
@@ -101,11 +110,17 @@ jobs:
         with:
           name: windows-capture-diagnostics
           path: artifacts/
+      - name: Stage Windows release download
+        run: |
+          New-Item -ItemType Directory -Force artifacts/releases | Out-Null
+          $installer = Get-ChildItem out/make -Recurse -Filter '*Setup.exe' | Select-Object -First 1
+          if (-not $installer) { throw 'Windows installer is missing' }
+          Copy-Item $installer.FullName artifacts/releases/ArchiveBox-Windows.exe
       - name: Upload Windows installer
         uses: actions/upload-artifact@v4
         with:
           name: archivebox-windows-build
-          path: out/make/**
+          path: artifacts/releases/
           if-no-files-found: error
       - name: Upload verified Windows screenshots
         uses: actions/upload-artifact@v4
@@ -115,9 +130,76 @@ jobs:
           if-no-files-found: error
           retention-days: 90
 
+  macos:
+    name: Mac universal DMG and installed-app screenshots
+    runs-on: macos-15
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Set the release version for this main run
+        run: node scripts/release-version.js
+      - run: npm run lint
+      - name: Build universal Mac DMG
+        run: npm run make -- --arch=universal
+      - name: Install the application from its DMG
+        shell: bash
+        run: |
+          image=$(find out/make -name '*.dmg' -print -quit)
+          test -n "$image"
+          mount="$RUNNER_TEMP/archivebox-dmg"
+          destination="$RUNNER_TEMP/Applications/ArchiveBox.app"
+          mkdir -p "$mount" "$RUNNER_TEMP/Applications"
+          hdiutil attach "$image" -readonly -nobrowse -mountpoint "$mount"
+          trap 'hdiutil detach "$mount"' EXIT
+          apps=("$mount"/*.app)
+          test -d "${apps[0]}"
+          test "${#apps[@]}" -eq 1
+          ditto "${apps[0]}" "$destination"
+          binary=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$destination/Contents/Info.plist")
+          lipo "$destination/Contents/MacOS/$binary" -verify_arch arm64
+          lipo "$destination/Contents/MacOS/$binary" -verify_arch x86_64
+          echo "ELECTRON_EXECUTABLE=$destination/Contents/MacOS/$binary" >> "$GITHUB_ENV"
+      - name: Exercise installed Mac setup and Docker guidance
+        env:
+          SCREENSHOT_DIR: artifacts/screenshots/macos
+        run: |
+          mkdir -p artifacts
+          set -o pipefail
+          npm run capture-screenshots -- --startup-only 2>&1 | tee artifacts/capture.log
+      - name: Preserve failed capture diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-capture-diagnostics
+          path: artifacts/
+      - name: Stage Mac release download
+        run: |
+          mkdir -p artifacts/releases
+          image=$(find out/make -name '*.dmg' -print -quit)
+          test -n "$image"
+          cp "$image" artifacts/releases/ArchiveBox-Mac.dmg
+      - name: Upload Mac installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: archivebox-macos-build
+          path: artifacts/releases/
+          if-no-files-found: error
+      - name: Upload verified Mac screenshots
+        uses: actions/upload-artifact@v4
+        with:
+          name: archivebox-screenshots-macos
+          path: artifacts/screenshots/macos
+          if-no-files-found: error
+          retention-days: 90
+
   site:
     name: Build public site from verified screenshots
-    needs: [linux, windows]
+    needs: [linux, windows, macos]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -132,11 +214,39 @@ jobs:
         with:
           name: archivebox-screenshots-windows
           path: artifacts/screenshots/windows
+      - uses: actions/download-artifact@v5
+        with:
+          name: archivebox-screenshots-macos
+          path: artifacts/screenshots/macos
       - name: Build site and check capture completeness
         run: npm run build-site -- --baseurl /electron-archivebox --screenshots-dir artifacts/screenshots
       - uses: actions/upload-pages-artifact@v3
         with:
           path: _site
+
+  release:
+    name: Publish verified desktop installers
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    needs: [linux, windows, macos, site]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - name: Resolve this run's release version
+        run: node scripts/release-version.js
+      - uses: actions/download-artifact@v5
+        with:
+          pattern: archivebox-*-build
+          path: artifacts/releases
+          merge-multiple: true
+      - name: Publish versioned release and stable download names
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node scripts/publish-release.js
 
   pages:
     name: Publish public site

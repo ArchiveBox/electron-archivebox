@@ -18,7 +18,7 @@ const escape = value => String(value).replace(/[&<>"']/g, char => ({ '&': '&amp;
 async function main() {
     const revision = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8' }).trim()
     const manifests = []
-    for (const platform of ['linux', 'windows']) {
+    for (const platform of ['linux', 'windows', 'macos']) {
         let captureManifest
         try {
             captureManifest = JSON.parse(await fs.readFile(path.join(input, platform, 'manifest.json'), 'utf8'))
@@ -29,8 +29,9 @@ async function main() {
         if (captureManifest.schemaVersion !== 1 || !/^[a-f0-9]{40}$/.test(captureManifest.commit) || !captureManifest.appVersion || !Number.isFinite(Date.parse(captureManifest.generatedAt)) || !captureManifest.screenshots?.length || !captureManifest.requiredScreenshots?.length) throw new Error('Incomplete capture provenance or coverage contract')
         if (process.env.GITHUB_SHA) {
             const expectedScope = platform === 'linux' ? 'full' : 'startup-only'
-            const expectedPlatform = platform === 'linux' ? /^linux-/ : /^win32-/
+            const expectedPlatform = { linux: /^linux-/, windows: /^win32-/, macos: /^darwin-/ }[platform]
             if (captureManifest.commit !== process.env.GITHUB_SHA || captureManifest.dirty !== false || captureManifest.packaged !== true || captureManifest.captureScope !== expectedScope || !expectedPlatform.test(captureManifest.platform)) throw new Error(`Capture provenance does not match this CI build: ${platform}`)
+            if (captureManifest.appVersion !== require('./release-version').releaseVersion()) throw new Error(`Capture app version does not match this release: ${platform}`)
         }
         if (captureManifest.captureScope === 'full' && (!captureManifest.dockerImage?.reference || !/^sha256:[a-f0-9]{64}$/.test(captureManifest.dockerImage?.id))) throw new Error(`Missing Docker image provenance: ${platform}`)
         if (process.env.GITHUB_RUN_ID && (String(captureManifest.workflowRun?.id) !== process.env.GITHUB_RUN_ID || captureManifest.workflowRun?.url !== `${repo}/actions/runs/${process.env.GITHUB_RUN_ID}`)) throw new Error(`Capture belongs to a different CI run: ${platform}`)
@@ -46,7 +47,7 @@ async function main() {
     }
     const screenshots = manifests.flatMap(manifest => manifest.screenshots.map(capture => ({ ...capture, id: `${manifest.artifactPlatform}-${capture.id}`, file: `${manifest.artifactPlatform}/${capture.file}`, commit: manifest.commit, platform: manifest.platform })))
     const [header, footer, landing] = await Promise.all(['header.html', 'footer.html', 'index.html'].map(file => fs.readFile(path.join(root, 'docs', file), 'utf8')))
-    const description = 'ArchiveBox Desktop: an Electron app for saving and browsing your web archive on Windows and Linux. Powered by a local ArchiveBox Docker server.'
+    const description = 'ArchiveBox Desktop: an Electron app for saving and browsing your web archive on Windows, Linux, and Mac. Powered by a local ArchiveBox Docker server.'
     const page = (title, content, gallery = false) => `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="theme-color" content="#9b2854"><title>${escape(title)}</title><meta name="description" content="${description}"><link rel="canonical" href="${canonical}${gallery ? 'screenshots/' : ''}"><meta name="robots" content="index,follow,max-image-preview:large"><meta property="og:type" content="website"><meta property="og:site_name" content="ArchiveBox"><meta property="og:locale" content="en_US"><meta property="og:url" content="${canonical}${gallery ? 'screenshots/' : ''}"><meta property="og:title" content="${escape(title)}"><meta property="og:description" content="${description}"><meta property="og:image" content="${canonical}assets/social-card.png"><meta property="og:image:type" content="image/png"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630"><meta property="og:image:alt" content="ArchiveBox — preserve the web"><meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="${escape(title)}"><meta name="twitter:description" content="${description}"><meta name="twitter:image" content="${canonical}assets/social-card.png"><link rel="icon" href="${base}assets/favicon.ico"><link rel="apple-touch-icon" href="${base}assets/apple-touch-icon.png"><link rel="stylesheet" href="${base}style.css?v=${revision}"><link rel="stylesheet" href="${base}site-chrome.css?v=${revision}"></head><body><a class="skip-link" href="#content">Skip to content</a>${header}<main id="content">${content}</main>${footer}</body></html>`.replaceAll('__BASE__', base)
     const figure = capture => `<figure><a href="${base}screenshots/${escape(capture.file)}?v=${capture.commit}"><img src="${base}screenshots/${escape(capture.file)}?v=${capture.commit}" alt="${escape(capture.title)} — real Electron application" width="${capture.width}" height="${capture.height}" loading="lazy"></a><figcaption>${capture.width} × ${capture.height} · <a href="${base}screenshots/${escape(capture.file)}">Full image</a></figcaption></figure>`
@@ -73,7 +74,7 @@ async function main() {
     }
     for (const capture of screenshots) await fs.copyFile(path.join(input, capture.file), path.join(output, 'screenshots', capture.file))
     const hero = screenshots.find(capture => capture.id === 'linux-archive') || screenshots[0]
-    await fs.writeFile(path.join(output, 'index.html'), page('ArchiveBox Desktop · Windows & Linux', landing.replace('__HERO_SCREENSHOT__', hero ? figure(hero) : '')))
+    await fs.writeFile(path.join(output, 'index.html'), page('ArchiveBox Desktop · Windows, Linux & Mac', landing.replace('__HERO_SCREENSHOT__', hero ? figure(hero) : '')))
     await fs.writeFile(path.join(output, 'screenshots/index.html'), page('Screenshots · ArchiveBox Desktop', gallery, true))
     await fs.writeFile(path.join(output, '.nojekyll'), '')
     await fs.writeFile(path.join(output, 'build.json'), JSON.stringify({ revision, generatedAt: new Date().toISOString(), captures: manifests.map(({ platform, commit }) => ({ platform, commit })), screenshots: screenshots.length }, null, 2) + '\n')
