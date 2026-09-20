@@ -1,16 +1,14 @@
 const { contextBridge, ipcRenderer } = require('electron')
 
 contextBridge.exposeInMainWorld('archivebox', Object.freeze({
-    origin: `http://127.0.0.1:${process.env.ARCHIVEBOX_PORT || '8085'}`,
-    platform: process.platform,
+    getState: () => ipcRenderer.invoke('service-state'),
+    action: (action, credentials) => ipcRenderer.invoke('service-action', action, credentials),
+    onState: callback => ipcRenderer.on('service-state', (_event, state) => callback(state)),
+    onNavigate: callback => ipcRenderer.on('navigate', (_event, route) => callback(route)),
+    openMenu: label => ipcRenderer.send('menu-open', label),
     window: Object.freeze({
         close: () => ipcRenderer.send('window-close'),
         maximize: () => ipcRenderer.send('window-maximize'),
         minimize: () => ipcRenderer.send('window-minimize'),
-    }),
-    versions: Object.freeze({
-        chrome: process.versions.chrome,
-        electron: process.versions.electron,
-        node: process.versions.node,
     }),
 }))

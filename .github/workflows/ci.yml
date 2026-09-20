@@ -2,8 +2,7 @@ name: CI
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
   pull_request:
   workflow_dispatch:
 
@@ -16,105 +15,112 @@ concurrency:
 
 jobs:
   linux:
-    name: Linux checks
+    name: Linux package and real app screenshots
     runs-on: ubuntu-latest
+    timeout-minutes: 25
     steps:
-      - name: Check out repository
-        uses: actions/checkout@v5
-      - name: Set up Node.js
-        uses: actions/setup-node@v5
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: npm
-      - name: Install dependencies
-        run: npm ci
+      - run: npm ci
+      - run: npm run lint
+      - run: npm audit --omit=dev
+      - name: Install Linux packaging tools
+        run: sudo apt-get update && sudo apt-get install -y rpm
+      - name: Build Linux installers
+        run: npm run make
       - name: Verify Docker daemon
         run: docker info
-      - name: Lint
-        run: npm run lint
-      - name: Package Electron app
-        run: npm run package
-      - name: Run Docker smoke test
-        run: npm run smoke-test
+      - name: Exercise the packaged app through real user actions
+        env:
+          ELECTRON_DISABLE_SANDBOX: 1
+          ELECTRON_EXECUTABLE: out/electron-archivebox-linux-x64/electron-archivebox
+          SCREENSHOT_DIR: artifacts/screenshots/linux
+        run: xvfb-run -a npm run capture-screenshots
+      - name: Upload Linux installers
+        uses: actions/upload-artifact@v4
+        with:
+          name: archivebox-linux-build
+          path: out/make/**
+          if-no-files-found: error
+      - name: Upload verified Linux screenshots
+        uses: actions/upload-artifact@v4
+        with:
+          name: archivebox-screenshots-linux
+          path: artifacts/screenshots/linux
+          if-no-files-found: error
+          retention-days: 90
 
   windows:
-    name: Windows package
+    name: Windows package and first-run screenshots
     runs-on: windows-latest
+    timeout-minutes: 15
     steps:
-      - name: Check out repository
-        uses: actions/checkout@v5
-      - name: Set up Node.js
-        uses: actions/setup-node@v5
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: npm
-      - name: Install dependencies
-        run: npm ci
-      - name: Lint
-        run: npm run lint
+      - run: npm ci
+      - run: npm run lint
       - name: Build Windows installer
         run: npm run make
-      - name: Upload Windows build
+      - name: Exercise packaged Windows setup and Docker guidance
+        env:
+          ELECTRON_EXECUTABLE: out/electron-archivebox-win32-x64/electron-archivebox.exe
+          SCREENSHOT_DIR: artifacts/screenshots/windows
+        run: npm run capture-screenshots -- --startup-only
+      - name: Upload Windows installer
         uses: actions/upload-artifact@v4
         with:
           name: archivebox-windows-build
           path: out/make/**
           if-no-files-found: error
-
-  screenshots:
-    name: Real Docker-backed screenshots
-    runs-on: ubuntu-latest
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@v5
-      - name: Set up Node.js
-        uses: actions/setup-node@v5
-        with:
-          node-version: 22
-          cache: npm
-      - name: Install dependencies
-        run: npm ci
-      - name: Verify Docker daemon
-        run: docker info
-      - name: Capture desktop screens
-        env:
-          ELECTRON_DISABLE_SANDBOX: 1
-        run: xvfb-run -a npm run capture-screenshots
-      - name: Upload screenshots
+      - name: Upload verified Windows screenshots
         uses: actions/upload-artifact@v4
         with:
-          name: archivebox-screenshots
-          path: artifacts/screenshots
+          name: archivebox-screenshots-windows
+          path: artifacts/screenshots/windows
           if-no-files-found: error
+          retention-days: 90
+
+  site:
+    name: Build public site from verified screenshots
+    needs: [linux, windows]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - uses: actions/download-artifact@v5
+        with:
+          name: archivebox-screenshots-linux
+          path: artifacts/screenshots/linux
+      - uses: actions/download-artifact@v5
+        with:
+          name: archivebox-screenshots-windows
+          path: artifacts/screenshots/windows
+      - name: Build site and check capture completeness
+        run: npm run build-site -- --baseurl /electron-archivebox --screenshots-dir artifacts/screenshots
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
 
   pages:
-    name: Publish screenshot gallery
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    needs: [windows, screenshots]
+    name: Publish public site
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    needs: site
     runs-on: ubuntu-latest
     permissions:
-      contents: read
       pages: write
       id-token: write
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - name: Check out repository
-        uses: actions/checkout@v5
-      - name: Download screenshot artifact
-        uses: actions/download-artifact@v5
-        with:
-          name: archivebox-screenshots
-          path: site/screenshots
-      - name: Assemble Pages site
-        run: cp -R docs/. site/
-      - name: Configure Pages
-        uses: actions/configure-pages@v5
-      - name: Upload Pages artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: site
-      - name: Deploy Pages
+      - uses: actions/configure-pages@v5
+      - uses: actions/deploy-pages@v4
         id: deployment
-        uses: actions/deploy-pages@v4

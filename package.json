@@ -1,6 +1,6 @@
 {
   "name": "electron-archivebox",
-  "version": "0.6.2",
+  "version": "0.7.0",
   "description": "Desktop Electron app for the ArchiveBox internet archiver",
   "main": "main.js",
   "scripts": {
@@ -9,7 +9,8 @@
     "smoke-test": "node scripts/smoke-test.js",
     "capture-screenshots": "node scripts/capture-screenshots.js",
     "package": "electron-forge package",
-    "make": "electron-forge make"
+    "make": "electron-forge make",
+    "build-site": "node scripts/build-site.js"
   },
   "engines": {
     "node": ">=22.14.0",
@@ -25,14 +26,14 @@
     "web"
   ],
   "author": "Nick Sweeting",
-  "license": "AGPL v2",
+  "license": "GPL-3.0-only",
   "devDependencies": {
     "@electron-forge/cli": "^7.11.2",
     "@electron-forge/maker-deb": "^7.11.2",
     "@electron-forge/maker-rpm": "^7.11.2",
     "@electron-forge/maker-squirrel": "^7.11.2",
     "@electron-forge/maker-zip": "^7.11.2",
-    "electron": "^44.4.2",
+    "electron": "^44.4.3",
     "eslint": "^10.10.0",
     "playwright": "^1.63.0"
   },
@@ -43,7 +44,15 @@
   "config": {
     "forge": {
       "packagerConfig": {
-        "asar": true
+        "asar": true,
+        "ignore": [
+          "^/artifacts($|/)",
+          "^/docs($|/)",
+          "^/_site($|/)",
+          "^/screenshots($|/)",
+          "^/scripts($|/)",
+          "^/\\.github($|/)"
+        ]
       },
       "makers": [
         {

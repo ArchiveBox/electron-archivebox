@@ -180,3 +180,26 @@ button {
 .frame-loading.is-hidden {
   display: none;
 }
+
+[hidden] { display: none !important; }
+.desktop-window { height: 100vh; min-height: 0; }
+.window-titlebar, .menubar, .app-toolbar { flex-shrink: 0; }
+button:disabled { opacity: .45; cursor: default; }
+.service-panel, .settings-panel { height: 100%; overflow: auto; padding: 40px; background: #f7f8fc; }
+.service-panel { display: grid; place-items: center; }
+.service-card { width: min(100%, 560px); padding: 30px; border: 1px solid #dce1eb; border-radius: 12px; background: #fff; box-shadow: 0 10px 35px #20294208; }
+h1 { margin: 12px 0 16px; font-size: 26px; }
+p { color: #586680; font-size: 14px; line-height: 1.6; }
+.eyebrow { color: #5373a4; font-size: 11px; font-weight: 700; letter-spacing: .12em; }
+#service-message, #settings-status { white-space: pre-wrap; overflow-wrap: anywhere; }
+#setup-form label { display: block; margin: 14px 0 6px; font-size: 13px; font-weight: 600; }
+#setup-form input { width: 100%; padding: 10px 12px; border: 1px solid #ccd5e5; border-radius: 6px; font: inherit; }
+.primary-button { padding: 11px 16px; border-radius: 6px; background: #315fba; color: white; cursor: pointer; font-weight: 600; }
+.primary-button:hover { background: #244d9e; }
+.service-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 20px; }
+.hint { font-size: 12px; color: #718099; }
+.settings-heading { display: flex; align-items: center; justify-content: space-between; }
+.settings-panel { max-width: 1100px; margin: auto; }
+dt { margin-top: 24px; font-size: 12px; font-weight: 700; color: #718099; }
+dd { margin: 6px 0; overflow-wrap: anywhere; }
+#settings-error { color: #a52c3e; }

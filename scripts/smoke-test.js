@@ -111,6 +111,7 @@ const main = async () => {
     let container = null
 
     try {
+        fs.chmodSync(DATA_DIR, 0o777)
         console.log('Checking Docker daemon...')
         await callDocker(docker, 'ping')
 
@@ -127,9 +128,9 @@ const main = async () => {
             HostConfig: {
                 Binds: [`${DATA_DIR}:/data`],
                 PortBindings: {
-                    [`${PORT}/tcp`]: [{ HostPort: PORT }],
+                    [`${PORT}/tcp`]: [{ HostIp: '127.0.0.1', HostPort: PORT }],
                 },
-                AutoRemove: true,
+                AutoRemove: false,
             },
             Volumes: {
                 '/data': {},

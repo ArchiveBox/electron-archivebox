@@ -1,69 +1,63 @@
-<div align="center">
+# ArchiveBox Desktop
 
-# ArchiveBox Desktop (alpha, help wanted!)
+A simple Electron desktop app for running ArchiveBox on **Windows and Linux**.
+It manages a local ArchiveBox Docker container and opens the real ArchiveBox web UI.
+For macOS and iOS, use [ArchiveBox.app](https://archivebox.github.io/ios-archivebox/).
 
-*Electron desktop app concept for ArchiveBox.*
+[Website and setup guide](https://archivebox.github.io/electron-archivebox/) ·
+[Real app screenshots](https://archivebox.github.io/electron-archivebox/screenshots/) ·
+[Downloads](https://github.com/ArchiveBox/electron-archivebox/releases) ·
+[CI](https://github.com/ArchiveBox/electron-archivebox/actions/workflows/ci.yml)
 
-![CI](https://github.com/ArchiveBox/electron-archivebox/actions/workflows/ci.yml/badge.svg)
+## Install and use
 
-<img src="https://i.imgur.com/QPHUS5C.png" width="400px">
-<br/>
+1. Install and start [Docker Desktop](https://www.docker.com/products/docker-desktop/)
+   on Windows (using Linux containers), or Docker Engine / Docker Desktop on Linux.
+2. Install the Windows `Setup.exe`, Debian/Ubuntu `.deb`, or Fedora `.rpm` from
+   Downloads. CI also retains installers as build artifacts.
+3. Open ArchiveBox Desktop, choose your local administrator credentials, and start
+   your collection. The first launch downloads the ArchiveBox image.
+4. Sign in, add URLs, search your archive, open saved pages, and manage users.
+   Settings shows the collection location and service controls.
 
-*We're looking for contributors to help make our desktop app experience better!*
+Your archive is stored in `~/archivebox` (your Windows user folder on Windows).
+Stopping or quitting the app stops its container and preserves your files. Docker
+must remain running while using the app. This is an early desktop fallback;
+Docker installation and updates are still managed by Docker itself.
 
-Reach out [on Twitter](https://twitter.com/ArchiveBoxApp) or open [an issue](https://github.com/ArchiveBox/electron-archivebox/issues) if you're interested in helping.
+## Develop
 
-</div>
+Use Node.js 22.14+ and npm 10.9+ with a running Docker daemon:
 
----
-
-## Quickstart
-
-The desktop app depends on Docker already being installed and running on your system.
-This is a hard dependency as the Desktop app is just a wrapper around the Docker container (for now).
-(Cross-platform packaging of Python + JS + Chrome + wget + curl and more without Docker is a hard problem)
-
-Yes, it's an Electron app, yes, I'm sorry. Electron is just so easy compared to the alternatives, and I don't have the time to do full native development.
-
-https://docs.docker.com/get-docker/
-
-```bash
-# Clone this repository
-git clone https://github.com/ArchiveBox/electron-archivebox && cd electron-archivebox
-
-# Install dependencies
-npm install
-
-# Verify Docker-backed app behavior in a sandbox
-npm run smoke-test
-
-# Run the app
+```sh
+npm ci
 npm start
 ```
 
-For headless Linux sandboxes, this app has also been verified with:
+`ARCHIVEBOX_DATA_DIR`, `ARCHIVEBOX_PORT`, and `DOCKER_HOST` can select a different
+collection, local port, or Docker daemon. The default service binds only to
+`127.0.0.1`. On Linux your user needs access to the Docker socket.
 
-```bash
-ELECTRON_DISABLE_SANDBOX=1 xvfb-run -a npm start
-```
-
-Note: If you're using Linux Bash for Windows, [see this guide](https://www.howtogeek.com/261575/how-to-run-graphical-linux-desktop-applications-from-windows-10s-bash-shell/) or use `node` from the command prompt.
-
-## Development checks
-
-The project uses Electron 44, Electron Forge, and Node.js 22 or newer. Run the
-same checks used by CI before opening a pull request:
-
-```bash
-npm ci
+```sh
 npm run lint
-npm run package
+npm run make
+npm run capture-screenshots
+npm run build-site -- --screenshots-dir artifacts/screenshots
 ```
 
-The Windows CI job builds the Squirrel installer. A compatible Linux CI job
-starts a real ArchiveBox Docker collection, creates a real snapshot, performs a
-real Add URLs action in the Electron window, and captures the View Archive, Add
-URLs, Manage Users, and Snapshot Detail screens. Each image includes the complete desktop window,
-including the title bar, window controls, application menubar, navigation toolbar, and real ArchiveBox
-content. The generated screenshots are published in the
-[desktop screen gallery](https://archivebox.github.io/electron-archivebox/).
+Capture automation launches the ordinary app, fills forms, and clicks its real
+controls. It creates a temporary collection through first-run setup, archives a
+real URL, inspects the saved content, manages a user, and stops/restarts the
+service. There is no screenshot mode, seeded database, substituted UI, or mocked
+backend. Generated PNGs and a revision/coverage manifest stay in ignored artifacts.
+
+CI builds Linux `.deb` / `.rpm` and Windows installers. It drives the packaged Linux
+app through the complete Docker-backed journey and the packaged Windows app
+through first-run and actual Docker-unavailable guidance (GitHub's Windows runner
+does not provide a Linux Docker daemon). The public gallery labels that distinction.
+Every successful main-branch run publishes the current site and verified captures.
+
+For headless Linux capture, use `xvfb-run -a npm run capture-screenshots`. Restricted
+CI hosts may also require `ELECTRON_DISABLE_SANDBOX=1`; normal desktop launches keep
+the Electron renderer sandbox enabled. To capture a packaged build, set
+`ELECTRON_EXECUTABLE` to its executable path.
