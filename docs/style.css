@@ -9,3 +9,9 @@
 .desktop-download .download-arrow { margin-left: auto; font-size: 21px; }
 .desktop-download:focus-visible { outline: 3px solid #c45b83; outline-offset: 4px; }
 @media (max-width: 480px) { .desktop-downloads { grid-template-columns: 1fr; } }
+
+.download-cta { display: inline-flex; align-items: center; gap: 10px; white-space: nowrap; }
+.download-cta-platforms { display: inline-flex; align-items: center; gap: 6px; line-height: 1; }
+.download-cta svg { width: 18px; height: 18px; flex: none; }
+.download-cta-penguin { font-size: 21px; line-height: 1; }
+.download-cta > svg { margin-left: 6px; }
