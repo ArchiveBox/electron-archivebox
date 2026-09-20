@@ -2,10 +2,10 @@
 
 A simple Electron desktop app for running ArchiveBox on **Windows, Linux, and Mac**.
 It manages a local ArchiveBox Docker container and opens the real ArchiveBox web UI.
-For the recommended native macOS and iOS experience, use [ArchiveBox.app](https://archivebox.github.io/ios-archivebox/).
+For the recommended native macOS and iOS experience, use [ArchiveBox.app](https://app.archivebox.io/).
 
-[Website and setup guide](https://archivebox.github.io/electron-archivebox/) ·
-[Real app screenshots](https://archivebox.github.io/electron-archivebox/screenshots/) ·
+[Website and setup guide](https://electron.archivebox.io/) ·
+[Real app screenshots](https://electron.archivebox.io/screenshots/) ·
 [Downloads](https://github.com/ArchiveBox/electron-archivebox/releases) ·
 [CI](https://github.com/ArchiveBox/electron-archivebox/actions/workflows/ci.yml)
 

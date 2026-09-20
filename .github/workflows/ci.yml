@@ -219,7 +219,7 @@ jobs:
           name: archivebox-screenshots-macos
           path: artifacts/screenshots/macos
       - name: Build site and check capture completeness
-        run: npm run build-site -- --baseurl /electron-archivebox --screenshots-dir artifacts/screenshots
+        run: npm run build-site -- --screenshots-dir artifacts/screenshots
       - uses: actions/upload-pages-artifact@v3
         with:
           path: _site

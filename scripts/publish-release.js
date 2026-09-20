@@ -20,7 +20,7 @@ async function main() {
         checksums.push(`${createHash('sha256').update(bytes).digest('hex')}  ${file}`)
     }
     await fs.writeFile(path.join(directory, 'SHA256SUMS'), `${checksums.join('\n')}\n`)
-    const notes = `ArchiveBox Desktop ${version}\n\nDownload the installer for your platform below. Docker must be installed and running (Linux containers on Windows). The Mac DMG includes Intel and Apple Silicon support.\n\nThese installers are not code-signed. Your operating system may require approval on first launch.\n\n[Setup guide](https://archivebox.github.io/electron-archivebox/) · [Real app screenshots](https://archivebox.github.io/electron-archivebox/screenshots/) · [Build and verification](https://github.com/${repo}/actions/runs/${process.env.GITHUB_RUN_ID})\n\nSource: ${process.env.GITHUB_SHA}\n`
+    const notes = `ArchiveBox Desktop ${version}\n\nDownload the installer for your platform below. Docker must be installed and running (Linux containers on Windows). The Mac DMG includes Intel and Apple Silicon support.\n\nThese installers are not code-signed. Your operating system may require approval on first launch.\n\n[Setup guide](https://electron.archivebox.io/) · [Real app screenshots](https://electron.archivebox.io/screenshots/) · [Build and verification](https://github.com/${repo}/actions/runs/${process.env.GITHUB_RUN_ID})\n\nSource: ${process.env.GITHUB_SHA}\n`
     const notesFile = path.join(directory, 'release-notes.md')
     await fs.writeFile(notesFile, notes)
     const gh = args => execFileSync('gh', args, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'inherit'] }).trim()

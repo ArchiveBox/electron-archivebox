@@ -117,15 +117,18 @@ const launch = async (dataDir, userDataDir, port, containerName, extraEnv = {}) 
     })
     electronApp.process().stdout.on('data', data => process.stdout.write(data))
     electronApp.process().stderr.on('data', data => process.stderr.write(data))
-    const actual = await electronApp.evaluate(({ BrowserWindow }) => ({
+    const page = await electronApp.firstWindow({ timeout: 30000 })
+    await page.waitForURL(url => url.pathname === '/index.html')
+    const actual = await electronApp.evaluate(({ app, BrowserWindow }) => ({
         shellUrl: BrowserWindow.getAllWindows()[0].webContents.getURL(),
+        appVersion: app.getVersion(),
         dataDir: process.env.ARCHIVEBOX_DATA_DIR,
         port: process.env.ARCHIVEBOX_PORT,
     }))
     assert.equal(actual.dataDir, dataDir, 'The launched app uses the isolated real collection')
     assert.equal(actual.port, String(port), 'The launched app uses the selected local port')
-    const page = electronApp.context().pages().find(candidate => candidate.url() === actual.shellUrl)
-    assert.ok(page, 'The desktop BrowserWindow shell is attached, independently of native content views')
+    assert.equal(actual.appVersion, require('../package.json').version, 'The launched app version matches the package being validated')
+    assert.equal(page.url(), actual.shellUrl, 'Automation is attached to the desktop BrowserWindow shell')
     page.setDefaultTimeout(30000)
     page.setDefaultNavigationTimeout(120000)
     applications.set(page, electronApp)

@@ -5,12 +5,12 @@ const { execFileSync } = require('node:child_process')
 
 const root = path.resolve(__dirname, '..')
 const repo = 'https://github.com/ArchiveBox/electron-archivebox'
-const canonical = 'https://archivebox.github.io/electron-archivebox/'
+const canonical = 'https://electron.archivebox.io/'
 const option = (name, fallback) => {
     const index = process.argv.indexOf(name)
     return index < 0 ? fallback : process.argv[index + 1]
 }
-const base = `/${option('--baseurl', '/electron-archivebox').replace(/^\/+|\/+$/g, '')}/`.replace('//', '/')
+const base = `/${option('--baseurl', '').replace(/^\/+|\/+$/g, '')}/`.replace('//', '/')
 const input = path.resolve(root, option('--screenshots-dir', 'artifacts/screenshots'))
 const output = path.resolve(root, option('--output', '_site'))
 const escape = value => String(value).replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]))
@@ -77,6 +77,7 @@ async function main() {
     await fs.writeFile(path.join(output, 'index.html'), page('ArchiveBox Desktop · Windows, Linux & Mac', landing.replace('__HERO_SCREENSHOT__', hero ? figure(hero) : '')))
     await fs.writeFile(path.join(output, 'screenshots/index.html'), page('Screenshots · ArchiveBox Desktop', gallery, true))
     await fs.writeFile(path.join(output, '.nojekyll'), '')
+    await fs.writeFile(path.join(output, 'CNAME'), new URL(canonical).hostname + '\n')
     await fs.writeFile(path.join(output, 'build.json'), JSON.stringify({ revision, generatedAt: new Date().toISOString(), captures: manifests.map(({ platform, commit }) => ({ platform, commit })), screenshots: screenshots.length }, null, 2) + '\n')
     console.log(`Built ${output}: ${screenshots.length} real screenshots`)
 }
