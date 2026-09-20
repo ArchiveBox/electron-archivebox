@@ -18,3 +18,7 @@
 
 .button.apple-cta { background: #171717; color: #fff; }
 .button.apple-cta:hover { background: #383838; color: #fff; }
+
+.desktop-download-card { border: 1px solid #9b285455; border-radius: 10px; background: #9b28541a; }
+.desktop-download-card .desktop-download { border: 0; background: transparent; }
+.desktop-download-note { margin: 0; padding: 0 16px 15px; font-size: 12px; line-height: 1.5; color: var(--muted); }
