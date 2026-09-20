@@ -1,0 +1,26 @@
+README.md
+  h_923c208e183a7b 27-30
+docs/index.html
+  h_923c208e183a7b 24
+index.html
+  h_923c208e183a7b 57,68-79
+main.js
+  h_923c208e183a7b 5,11,13-15,36-37,48-74,90,189-190,292-293,296,298,329-330,356-376,397-398,433-434
+renderer.js
+  h_923c208e183a7b 4-5,46-60,82-96
+scripts/capture-screenshots.js
+  h_923c208e183a7b 14,21,30,45,188-189,244-269,317-318
+styles.css
+  h_923c208e183a7b 177-184
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "c0440518d26e666150a865eb829cd7871bd310df",
+  "prompts": {},
+  "humans": {
+    "h_923c208e183a7b": {
+      "author": "Nick Sweeting <git@sweeting.me>"
+    }
+  }
+}
