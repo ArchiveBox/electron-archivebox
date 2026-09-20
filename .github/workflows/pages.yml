@@ -1,0 +1,74 @@
+name: Desktop website
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+
+permissions:
+  contents: read
+  actions: read
+
+# Serialize restore, build and deploy so an older capture set cannot publish last.
+concurrency:
+  group: ${{ github.event_name == 'pull_request' && format('electron-pages-{0}', github.ref) || github.event_name == 'workflow_run' && github.event.workflow_run.conclusion != 'success' && github.run_id || 'electron-archivebox-pages' }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    outputs:
+      revision: ${{ steps.source.outputs.revision }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event_name == 'pull_request' && github.ref || 'main' }}
+      - id: source
+        run: echo "revision=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - uses: astral-sh/setup-uv@v7
+        with:
+          python-version: '3.13'
+      - name: Restore verified screenshots without building the app
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: uv run --no-project python scripts/restore-site-screenshots.py artifacts/screenshots
+      - name: Build latest website with original capture provenance
+        run: node scripts/build-site.js --screenshots-dir artifacts/screenshots --capture-run artifacts/screenshots/capture-run.json
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    if: github.event_name != 'pull_request'
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Publish only the current main revision
+        id: current
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REVISION: ${{ needs.build.outputs.revision }}
+        run: |
+          latest=$(gh api repos/${{ github.repository }}/commits/main --jq .sha)
+          echo "deploy=$([ "$latest" = "$REVISION" ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+      - uses: actions/configure-pages@v5
+        if: steps.current.outputs.deploy == 'true'
+      - uses: actions/deploy-pages@v4
+        if: steps.current.outputs.deploy == 'true'
+        id: deployment

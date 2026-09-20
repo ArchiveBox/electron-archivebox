@@ -17,6 +17,12 @@ const escape = value => String(value).replace(/[&<>"']/g, char => ({ '&': '&amp;
 
 async function main() {
     const revision = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8' }).trim()
+    const captureRunPath = option('--capture-run', null)
+    const captureRun = captureRunPath ? JSON.parse(await fs.readFile(path.resolve(root, captureRunPath), 'utf8')) : null
+    if (captureRun && (!/^[a-f0-9]{40}$/.test(captureRun.commit) || !/^[1-9]\d*$/.test(captureRun.runId) || !/^\d+\.\d+\.\d+$/.test(captureRun.appVersion))) throw new Error('Invalid restored capture run metadata')
+    const expectedCommit = captureRun?.commit || process.env.GITHUB_SHA
+    const expectedRunId = captureRun?.runId || process.env.GITHUB_RUN_ID
+    const expectedVersion = captureRun?.appVersion || (expectedCommit && require('./release-version').releaseVersion())
     const manifests = []
     for (const platform of ['linux', 'windows', 'macos']) {
         let captureManifest
@@ -27,14 +33,14 @@ async function main() {
             continue
         }
         if (captureManifest.schemaVersion !== 1 || !/^[a-f0-9]{40}$/.test(captureManifest.commit) || !captureManifest.appVersion || !Number.isFinite(Date.parse(captureManifest.generatedAt)) || !captureManifest.screenshots?.length || !captureManifest.requiredScreenshots?.length) throw new Error('Incomplete capture provenance or coverage contract')
-        if (process.env.GITHUB_SHA) {
+        if (expectedCommit) {
             const expectedScope = platform === 'linux' ? 'full' : 'startup-only'
             const expectedPlatform = { linux: /^linux-/, windows: /^win32-/, macos: /^darwin-/ }[platform]
-            if (captureManifest.commit !== process.env.GITHUB_SHA || captureManifest.dirty !== false || captureManifest.packaged !== true || captureManifest.captureScope !== expectedScope || !expectedPlatform.test(captureManifest.platform)) throw new Error(`Capture provenance does not match this CI build: ${platform}`)
-            if (captureManifest.appVersion !== require('./release-version').releaseVersion()) throw new Error(`Capture app version does not match this release: ${platform}`)
+            if (captureManifest.commit !== expectedCommit || captureManifest.dirty !== false || captureManifest.packaged !== true || captureManifest.captureScope !== expectedScope || !expectedPlatform.test(captureManifest.platform)) throw new Error(`Capture provenance does not match this CI build: ${platform}`)
+            if (captureManifest.appVersion !== expectedVersion) throw new Error(`Capture app version does not match this release: ${platform}`)
         }
         if (captureManifest.captureScope === 'full' && (!captureManifest.dockerImage?.reference || !/^sha256:[a-f0-9]{64}$/.test(captureManifest.dockerImage?.id))) throw new Error(`Missing Docker image provenance: ${platform}`)
-        if (process.env.GITHUB_RUN_ID && (String(captureManifest.workflowRun?.id) !== process.env.GITHUB_RUN_ID || captureManifest.workflowRun?.url !== `${repo}/actions/runs/${process.env.GITHUB_RUN_ID}`)) throw new Error(`Capture belongs to a different CI run: ${platform}`)
+        if (expectedRunId && (String(captureManifest.workflowRun?.id) !== expectedRunId || captureManifest.workflowRun?.url !== `${repo}/actions/runs/${expectedRunId}`)) throw new Error(`Capture belongs to a different CI run: ${platform}`)
         const ids = new Set()
         for (const capture of captureManifest.screenshots) {
             if (!/^[a-z0-9-]+$/.test(capture.id) || ids.has(capture.id) || !capture.title || !/^[a-zA-Z0-9_-]+\.png$/.test(capture.file)) throw new Error('Invalid screenshot entry')

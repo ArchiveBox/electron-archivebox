@@ -220,9 +220,12 @@ jobs:
           path: artifacts/screenshots/macos
       - name: Build site and check capture completeness
         run: npm run build-site -- --screenshots-dir artifacts/screenshots
-      - uses: actions/upload-pages-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
-          path: _site
+          name: site-screenshots
+          path: artifacts/screenshots
+          if-no-files-found: error
+          retention-days: 90
 
   release:
     name: Publish verified desktop installers
@@ -247,32 +250,3 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: node scripts/publish-release.js
-
-  pages:
-    name: Publish public site
-    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
-    needs: site
-    runs-on: ubuntu-latest
-    concurrency:
-      group: electron-archivebox-pages
-      cancel-in-progress: false
-    permissions:
-      contents: read
-      pages: write
-      id-token: write
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - name: Publish only the current main revision
-        id: current
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          latest=$(gh api repos/${{ github.repository }}/commits/main --jq .sha)
-          echo "deploy=$([ "$latest" = '${{ github.sha }}' ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
-      - uses: actions/configure-pages@v5
-        if: steps.current.outputs.deploy == 'true'
-      - uses: actions/deploy-pages@v4
-        if: steps.current.outputs.deploy == 'true'
-        id: deployment
