@@ -99,6 +99,7 @@ $bitmap.Dispose()
 
 const launch = async (dataDir, userDataDir, port, containerName, extraEnv = {}) => {
     const electronApp = await electron.launch({
+        chromiumSandbox: true,
         ...(process.env.ELECTRON_EXECUTABLE ? { executablePath: process.env.ELECTRON_EXECUTABLE } : {}),
         args: [...(process.env.ELECTRON_EXECUTABLE ? [] : [path.join(ROOT_DIR, 'main.js')]), `--user-data-dir=${userDataDir}`],
         env: {

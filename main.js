@@ -424,10 +424,22 @@ const bootstrap = async () => {
         event.preventDefault()
         quitting = true
         void (async () => {
-            while (busy) await new Promise(resolve => setTimeout(resolve, 100))
+            console.info('[shutdown] Waiting for the current service operation…')
+            while (busy || applyingNetwork) await new Promise(resolve => setTimeout(resolve, 100))
+            console.info('[shutdown] Stopping the ArchiveBox container…')
             await stopContainer()
-            if (shellServer) await new Promise(resolve => shellServer.close(resolve))
-        })().catch(error => console.error(error)).finally(() => app.quit())
+            console.info('[shutdown] Closing desktop HTTP connections…')
+            if (shellServer) await new Promise(resolve => {
+                shellServer.close(resolve)
+                shellServer.closeAllConnections()
+            })
+            console.info('[shutdown] Service and desktop HTTP server stopped.')
+        })().catch(error => console.error(error)).finally(() => {
+            tray?.destroy()
+            tray = null
+            console.info('[shutdown] Exiting ArchiveBox.')
+            app.quit()
+        })
     })
     await app.whenReady()
     try { setNetwork(validateNetwork(JSON.parse(await fs.readFile(networkFile(), 'utf8')))) }
