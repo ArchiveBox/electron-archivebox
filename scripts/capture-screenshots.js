@@ -83,11 +83,11 @@ if (-not [NativeCapture]::GetWindowRect([IntPtr]::new(${windowId}), [ref]$rect))
 $bitmap = New-Object System.Drawing.Bitmap ($rect.Right - $rect.Left), ($rect.Bottom - $rect.Top)
 $graphics = [System.Drawing.Graphics]::FromImage($bitmap)
 $graphics.CopyFromScreen($rect.Left, $rect.Top, 0, 0, $bitmap.Size)
-$bitmap.Save('${filename.replaceAll("'", "''")}', [System.Drawing.Imaging.ImageFormat]::Png)
+$bitmap.Save($env:SCREENSHOT_CAPTURE_FILE, [System.Drawing.Imaging.ImageFormat]::Png)
 $graphics.Dispose()
 $bitmap.Dispose()
 `
-        execFileSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', script])
+        execFileSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', script], { env: { ...process.env, SCREENSHOT_CAPTURE_FILE: filename } })
     } else {
         throw new Error(`Native window capture is unsupported on ${process.platform}`)
     }
