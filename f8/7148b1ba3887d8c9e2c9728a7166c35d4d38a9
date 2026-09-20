@@ -1,0 +1,14 @@
+.github/workflows/pages.yml
+  h_923c208e183a7b 1,9,17-22,24,31,35,37-40,42-43,56-59,61,67,76,82
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "f87148b1ba3887d8c9e2c9728a7166c35d4d38a9",
+  "prompts": {},
+  "humans": {
+    "h_923c208e183a7b": {
+      "author": "Nick Sweeting <git@sweeting.me>"
+    }
+  }
+}
