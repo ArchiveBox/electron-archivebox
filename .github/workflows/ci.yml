@@ -28,17 +28,27 @@ jobs:
       - run: npm run lint
       - run: npm audit --omit=dev
       - name: Install Linux packaging tools
-        run: sudo apt-get update && sudo apt-get install -y rpm
+        run: sudo apt-get update && sudo apt-get install -y rpm imagemagick xdotool
       - name: Build Linux installers
         run: npm run make
+      - name: Install Debian package
+        run: sudo apt-get install -y ./out/make/deb/x64/*.deb
       - name: Verify Docker daemon
         run: docker info
       - name: Exercise the packaged app through real user actions
+        shell: bash
         env:
-          ELECTRON_DISABLE_SANDBOX: 1
-          ELECTRON_EXECUTABLE: out/electron-archivebox-linux-x64/electron-archivebox
+          ELECTRON_EXECUTABLE: /usr/bin/electron-archivebox
           SCREENSHOT_DIR: artifacts/screenshots/linux
-        run: xvfb-run -a npm run capture-screenshots
+        run: |
+          mkdir -p artifacts
+          xvfb-run -a --server-args="-screen 0 1600x1000x24" npm run capture-screenshots 2>&1 | tee artifacts/capture.log
+      - name: Preserve failed capture diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-capture-diagnostics
+          path: artifacts/
       - name: Upload Linux installers
         uses: actions/upload-artifact@v4
         with:
@@ -67,11 +77,30 @@ jobs:
       - run: npm run lint
       - name: Build Windows installer
         run: npm run make
+      - name: Install Windows application
+        run: |
+          $installer = Get-ChildItem out/make -Recurse -Filter '*Setup.exe' | Select-Object -First 1
+          if (-not $installer) { throw 'Windows installer is missing' }
+          $process = Start-Process -FilePath $installer.FullName -ArgumentList '--silent' -Wait -PassThru
+          if ($process.ExitCode -ne 0) { throw "Installer exited with $($process.ExitCode)" }
+          $version = (Get-Content package.json | ConvertFrom-Json).version
+          $executable = Join-Path $env:LOCALAPPDATA "archivebox/app-$version/electron-archivebox.exe"
+          if (-not (Test-Path $executable)) { throw "Installed app is missing: $executable" }
+          Get-Process -Name electron-archivebox -ErrorAction SilentlyContinue | Stop-Process
+          "ELECTRON_EXECUTABLE=$executable" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
       - name: Exercise packaged Windows setup and Docker guidance
         env:
-          ELECTRON_EXECUTABLE: out/electron-archivebox-win32-x64/electron-archivebox.exe
           SCREENSHOT_DIR: artifacts/screenshots/windows
-        run: npm run capture-screenshots -- --startup-only
+        run: |
+          New-Item -ItemType Directory -Force artifacts | Out-Null
+          npm run capture-screenshots -- --startup-only 2>&1 | Tee-Object artifacts/capture.log
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Preserve failed capture diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-capture-diagnostics
+          path: artifacts/
       - name: Upload Windows installer
         uses: actions/upload-artifact@v4
         with:

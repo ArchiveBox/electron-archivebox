@@ -10,18 +10,19 @@ const { createDockerClient } = require('../docker-client')
 
 const ROOT_DIR = path.resolve(__dirname, '..')
 const OUTPUT_DIR = path.resolve(process.env.SCREENSHOT_DIR || path.join(ROOT_DIR, 'artifacts', 'screenshots'))
-const IMAGE = 'archivebox/archivebox:latest'
+const IMAGE = 'archivebox/archivebox:dev'
 const STARTUP_ONLY = process.argv.includes('--startup-only')
 const USERNAME = 'archivebox'
 const PASSWORD = 'archivebox-e2e-password'
 const EMAIL = 'archivebox@example.com'
 const REQUIRED_SCREENS = STARTUP_ONLY ? ['setup', 'docker-error'] : [
-    'setup', 'startup', 'empty-archive', 'login', 'add-urls', 'archive',
-    'search', 'snapshot', 'manage-users', 'add-user', 'edit-user',
+    'setup', 'startup', 'empty-archive', 'login', 'add-urls', 'add-options', 'activity', 'archive',
+    'search', 'snapshot-overview', 'snapshot', 'archive-grid', 'tags', 'archive-log', 'manage-users', 'add-user', 'edit-user',
     'settings', 'stopped', 'restarted', 'docker-error',
 ]
-const docker = createDockerClient({ timeout: 120000 })
+const docker = STARTUP_ONLY ? null : createDockerClient({ timeout: 120000 })
 const screenshots = []
+const applications = new WeakMap()
 const callDocker = (object, method, ...args) => new Promise((resolve, reject) => {
     object[method](...args, (error, result) => error ? reject(error) : resolve(result))
 })
@@ -33,7 +34,12 @@ const getFreePort = () => new Promise((resolve, reject) => {
         server.close(() => resolve(port))
     })
 })
-const archiveFrame = page => page.frameLocator('#archivebox-frame')
+const contentPage = async (electronApp, shellPage, port) => {
+    const page = electronApp.context().pages().find(candidate => candidate !== shellPage && candidate.url().startsWith(`http://127.0.0.1:${port}/`))
+    assert.ok(page, 'The real ArchiveBox WebContentsView is available to automation')
+    page.setDefaultTimeout(30000)
+    return page
+}
 const waitForRunning = async page => {
     await page.locator('#service-panel[data-state="running"], #service-panel[data-state="error"]').waitFor({ state: 'attached', timeout: 180000 })
     assert.equal(await page.locator('#service-panel').getAttribute('data-state'), 'running', await page.locator('#service-message').innerText())
@@ -43,8 +49,50 @@ const waitForRunning = async page => {
 // normal shipped UI action: no injected HTML, IPC calls, route changes or seeds.
 const capture = async (page, id, title, description, checks) => {
     const file = `${id}.png`
-    const png = await page.screenshot({ path: path.join(OUTPUT_DIR, file) })
-    const frame = page.frames().find(frame => frame.parentFrame() === page.mainFrame())
+    const electronApp = applications.get(page)
+    const frame = electronApp.context().pages().find(candidate => candidate !== page && candidate.url().startsWith('http://127.0.0.1:'))
+    // Let both renderers finish the paint requested by the preceding user action.
+    for (const surface of [page, frame].filter(Boolean)) {
+        await surface.evaluate(() => new Promise(resolve => window.requestAnimationFrame(() => window.requestAnimationFrame(resolve))))
+    }
+    const target = await electronApp.evaluate(({ BrowserWindow }) => {
+        const window = BrowserWindow.getAllWindows()[0]
+        return { id: window.getMediaSourceId().split(':')[1], handle: window.getNativeWindowHandle().toString('hex'), bounds: window.getBounds() }
+    })
+    const filename = path.join(OUTPUT_DIR, file)
+    if (process.platform === 'darwin') {
+        execFileSync('/usr/sbin/screencapture', ['-x', '-o', '-l', target.id, filename])
+    } else if (process.platform === 'linux') {
+        execFileSync('import', ['-window', target.id, filename])
+    } else if (process.platform === 'win32') {
+        const handle = Buffer.from(target.handle, 'hex')
+        const windowId = handle.length === 8 ? handle.readBigUInt64LE().toString() : String(handle.readUInt32LE())
+        const script = `
+Add-Type -AssemblyName System.Drawing
+Add-Type @'
+using System;
+using System.Runtime.InteropServices;
+public class NativeCapture {
+    [StructLayout(LayoutKind.Sequential)] public struct RECT { public int Left, Top, Right, Bottom; }
+    [DllImport("user32.dll")] public static extern bool GetWindowRect(IntPtr hWnd, out RECT rect);
+    [DllImport("user32.dll")] public static extern bool SetProcessDPIAware();
+}
+'@
+[NativeCapture]::SetProcessDPIAware() | Out-Null
+$rect = New-Object NativeCapture+RECT
+if (-not [NativeCapture]::GetWindowRect([IntPtr]::new(${windowId}), [ref]$rect)) { throw 'Cannot read the app window bounds' }
+$bitmap = New-Object System.Drawing.Bitmap ($rect.Right - $rect.Left), ($rect.Bottom - $rect.Top)
+$graphics = [System.Drawing.Graphics]::FromImage($bitmap)
+$graphics.CopyFromScreen($rect.Left, $rect.Top, 0, 0, $bitmap.Size)
+$bitmap.Save('${filename.replaceAll("'", "''")}', [System.Drawing.Imaging.ImageFormat]::Png)
+$graphics.Dispose()
+$bitmap.Dispose()
+`
+        execFileSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', script])
+    } else {
+        throw new Error(`Native window capture is unsupported on ${process.platform}`)
+    }
+    const png = await fs.readFile(filename)
     screenshots.push({
         id, file, title, description, checks,
         capturedAt: new Date().toISOString(),
@@ -72,20 +120,22 @@ const launch = async (dataDir, userDataDir, port, containerName, extraEnv = {}) 
     const page = await electronApp.firstWindow({ timeout: 30000 })
     page.setDefaultTimeout(30000)
     page.setDefaultNavigationTimeout(120000)
+    applications.set(page, electronApp)
     return { electronApp, page }
 }
 
-const login = async page => {
-    const frame = archiveFrame(page)
+const login = async (page, frame) => {
     await frame.locator('input[name="username"]').fill(USERNAME)
     await frame.locator('input[name="password"]').fill(PASSWORD)
     await frame.locator('input[type="submit"], button[type="submit"]').first().click()
+    await frame.locator('input[name="username"]').waitFor({ state: 'hidden' })
+    await page.locator('[data-route="/add/"]').click()
     await frame.locator('#add-form').waitFor()
 }
 
 const captureRealScreens = async ({ dataDir, userDataDir, port, containerName }) => {
     const { electronApp, page } = await launch(dataDir, userDataDir, port, containerName)
-    const frame = archiveFrame(page)
+    let frame
     try {
         await page.locator('#setup-form').waitFor()
         await capture(page, 'setup', 'First-run setup', 'The ordinary desktop app opens a fresh collection and asks for its administrator account.', ['New empty data directory', 'Visible administrator setup form'])
@@ -97,37 +147,68 @@ const captureRealScreens = async ({ dataDir, userDataDir, port, containerName })
         await page.locator('#setup-form').waitFor({ state: 'hidden' })
         await capture(page, 'startup', 'Starting ArchiveBox', 'The app connects to Docker and initializes the collection after submitting the setup form.', ['Setup submitted through the visible form', 'Real service startup panel'])
         await waitForRunning(page)
+        frame = await contentPage(electronApp, page, port)
         await frame.locator('#table-bookmarks').waitFor()
-        assert.equal(await frame.locator('#table-bookmarks tbody tr').count(), 0)
+        assert.equal(await frame.locator('#table-bookmarks .snapshot-row').count(), 0)
         await capture(page, 'empty-archive', 'Empty collection', 'The newly initialized collection is ready for its first saved page.', ['Live ArchiveBox public index', 'Zero snapshot rows'])
 
         await page.locator('[data-route="/add/"]').click()
         await frame.locator('input[name="username"]').waitFor()
         await capture(page, 'login', 'Sign in', 'ArchiveBox requires the administrator created during setup before adding pages.', ['Real authentication form reached by Add URLs'])
-        await login(page)
+        await login(page, frame)
         await frame.locator('#id_url').fill('https://example.com\nhttps://example.org')
-        await frame.locator('#id_tag').fill('desktop-demo')
-        await frame.locator('#id_archive_methods').selectOption(['title', 'wget'])
-        await capture(page, 'add-urls', 'Add URLs', 'Two public websites are entered in the actual ArchiveBox form, with title and HTML extraction selected.', ['Authenticated Add URLs form', 'Two entered URLs', 'Real title and wget extractors selected'])
+        await frame.getByPlaceholder('Add tag...').fill('desktop-demo')
+        await frame.getByPlaceholder('Add tag...').press('Enter')
+        await frame.locator('[data-preset="clear-all"]').click()
+        const titleGroup = frame.locator('.plugin-group').filter({ has: frame.locator('input.plugin-section-toggle[value="title"]') })
+        if (await titleGroup.getAttribute('open') === null) await titleGroup.locator('summary').click()
+        for (const plugin of ['title', 'wget', 'screenshot']) await frame.locator(`input.plugin-section-toggle[value="${plugin}"]`).check()
+        await frame.locator('#id_url').scrollIntoViewIfNeeded()
+        await capture(page, 'add-urls', 'Add URLs', 'Two public websites are entered in the actual ArchiveBox form, with title, HTML and browser screenshot extraction selected.', ['Authenticated Add URLs form', 'Two entered URLs', 'Real title, wget and screenshot extractors selected'])
+        await frame.locator('#submit').scrollIntoViewIfNeeded()
+        await capture(page, 'add-options', 'Archive options', 'Scrolling the real Add URLs form reveals the parser, tags, depth, extraction methods and submit button.', ['Actual form scrolled to its lower controls', 'Title, wget and screenshot methods selected'])
         await frame.locator('#submit').click()
-        // ArchiveBox submits a real archive job, then navigates to its index.
-        await frame.locator('#in-progress, #stdout, #changelist').first().waitFor({ timeout: 180000 })
+        await page.locator('[data-route="/admin/#progress-monitor"]').click()
+        await frame.locator('#progress-monitor').waitFor()
+        if (await frame.locator('#progress-monitor').getAttribute('class').then(value => value.includes('collapsed'))) await frame.locator('#progress-collapse').click()
+        await frame.locator('#crawl-tree .crawl-item .status-badge.started').first().waitFor({ timeout: 180000 })
+        await capture(page, 'activity', 'Live activity', 'The Activity button opens ArchiveBox’s live progress monitor while the submitted crawl runs real extractors.', ['Activity clicked in desktop toolbar', 'Live crawl state is started', 'Actual progress monitor receives running-job data'])
+        await frame.locator('#idle-message').waitFor({ timeout: 180000 })
         await page.locator('[data-route="/public/"]').click()
-        await frame.locator('[data-title-for="https://example.com"]').filter({ hasText: 'Example Domain' }).waitFor({ timeout: 180000 })
-        await frame.locator('[data-title-for="https://example.org"]').filter({ hasText: 'Example Domain' }).waitFor({ timeout: 180000 })
-        assert.equal(await frame.locator('#table-bookmarks tbody tr').count(), 2)
+        await frame.locator('#result_list tbody tr').filter({ hasText: 'https://example.com' }).locator('.field-title_str').filter({ hasText: 'Example Domain' }).waitFor({ timeout: 180000 })
+        await frame.locator('#result_list tbody tr').filter({ hasText: 'https://example.org' }).locator('.field-title_str').filter({ hasText: 'Example Domain' }).waitFor({ timeout: 180000 })
+        assert.equal(await frame.locator('#result_list tbody tr').count(), 2)
         await capture(page, 'archive', 'Saved pages', 'The collection lists two real pages saved through Add URLs, with extracted titles and tags.', ['Two real snapshot rows', 'Both extracted titles equal Example Domain', 'Tag desktop-demo visible'])
 
         await frame.locator('#searchbar').fill('example.com')
-        await frame.locator('#changelist-search input[type="submit"]').click()
-        await frame.locator('#table-bookmarks tbody tr').filter({ hasText: 'https://example.com' }).waitFor()
-        await frame.locator('#table-bookmarks th').filter({ hasText: 'Snapshot (1)' }).waitFor()
-        assert.equal(await frame.locator('#table-bookmarks tbody tr').count(), 1)
+        await frame.locator('#searchbar').press('Enter')
+        await frame.locator('#result_list tbody tr').nth(1).waitFor({ state: 'detached' })
+        await frame.locator('#result_list tbody tr').filter({ hasText: 'https://example.com' }).waitFor()
+        assert.equal(await frame.locator('#result_list tbody tr').count(), 1)
         await capture(page, 'search', 'Search the archive', 'Searching for example.com filters the two-page collection to one matching snapshot.', ['Search submitted using visible form', 'One matching result'])
-        await frame.locator('.title-col a').filter({ hasText: 'Example Domain' }).click()
-        await frame.locator('a[target="preview"]').filter({ hasText: 'Wget > HTML' }).click()
+        await frame.locator('.field-title_str a').filter({ hasText: 'Example Domain' }).click()
+        await frame.locator('.header-url').filter({ hasText: 'https://example.com' }).waitFor()
+        await frame.locator('.header-toggle').click()
+        await frame.locator('a[target="preview"]').filter({ hasText: /wget/i }).waitFor()
+        await capture(page, 'snapshot-overview', 'Snapshot details', 'The actual snapshot detail page shows saved files, metadata and extraction status for example.com.', ['Saved snapshot link opened', 'Snapshot URL matches example.com', 'Wget output available'])
+        await frame.locator('a[target="preview"]').filter({ hasText: /wget/i }).click()
+        await frame.locator('.header-toggle').click()
         await frame.frameLocator('iframe[name="preview"]').getByRole('heading', { name: 'Example Domain', exact: true }).waitFor({ timeout: 180000 })
         await capture(page, 'snapshot', 'Archived page', 'The snapshot viewer displays the HTML actually downloaded by wget from example.com.', ['Snapshot opened by its saved-page link', 'Wget HTML preview selected', 'Downloaded HTML renders Example Domain'])
+
+        await page.locator('[data-route="/public/"]').click()
+        await frame.getByRole('link', { name: 'Snapshots', exact: true }).click()
+        await frame.locator('#result_list').waitFor()
+        await frame.locator('#result_list').filter({ hasText: 'example.com' }).waitFor()
+        await frame.getByRole('button', { name: 'Switch to grid view' }).click()
+        await frame.locator('.card-thumbnail').first().waitFor()
+        await capture(page, 'archive-grid', 'Snapshot grid', 'The grid toggle shows the saved pages with their real browser screenshots.', ['Snapshots navigation clicked', 'Grid view selected', 'Actual saved-page thumbnails displayed'])
+        await frame.getByRole('link', { name: 'Tags', exact: true }).click()
+        await frame.locator('#tag-card-grid .tag-card').filter({ hasText: 'desktop-demo' }).waitFor()
+        await capture(page, 'tags', 'Manage tags', 'The Tags screen lists the tag assigned through the Add URLs form.', ['Tags link clicked', 'Persisted desktop-demo tag visible'])
+        await frame.getByRole('link', { name: 'Log', exact: true }).click()
+        await frame.locator('#result_list').filter({ hasText: 'wget' }).waitFor()
+        await capture(page, 'archive-log', 'Archive results', 'The Log screen shows the actual title and wget extraction jobs for the saved pages.', ['Log link clicked', 'Real wget extraction results present'])
 
         await page.locator('[data-route="/admin/auth/user/"]').click()
         await frame.locator('#result_list').waitFor()
@@ -157,13 +238,13 @@ const captureRealScreens = async ({ dataDir, userDataDir, port, containerName })
         await page.locator('#start-service').click()
         await waitForRunning(page)
         await page.locator('[data-route="/public/"]').click()
-        await frame.locator('[data-title-for="https://example.com"]').filter({ hasText: 'Example Domain' }).waitFor()
-        assert.equal(await frame.locator('#table-bookmarks tbody tr').count(), 2)
+        await frame.locator('#result_list tbody tr').filter({ hasText: 'https://example.com' }).locator('.field-title_str').filter({ hasText: 'Example Domain' }).waitFor()
+        assert.equal(await frame.locator('#result_list tbody tr').count(), 2)
         await capture(page, 'restarted', 'Collection after restart', 'Restarting the Docker service preserves both saved pages and their extracted titles.', ['Real service stop/start', 'Both saved pages survive restart'])
     } catch (error) {
-        await page.screenshot({ path: path.join(OUTPUT_DIR, 'failure.png') }).catch(() => {})
+        await capture(page, 'failure', 'Capture failure', error.message, []).catch(() => {})
         console.error(await page.locator('body').innerText().catch(() => ''))
-        console.error(await frame.locator('body').innerText().catch(() => ''))
+        if (frame) console.error(await frame.locator('body').innerText().catch(() => ''))
         throw error
     } finally {
         await electronApp.close()

@@ -7,9 +7,9 @@
 </section>
 __HERO_SCREENSHOT__
 <section class="features" aria-label="Desktop features">
-  <article><h2>Keep a local copy</h2><p>Add URLs and preserve pages in your own ArchiveBox collection. Your archive stays in a folder you choose.</p></article>
+  <article><h2>Keep a local copy</h2><p>Add URLs and preserve pages in your own ArchiveBox collection. Your archive stays in your local archive folder.</p></article>
   <article><h2>Browse what you saved</h2><p>Search your collection, open snapshots, and inspect the files that ArchiveBox captured.</p></article>
-  <article><h2>Manage your server</h2><p>Start and stop ArchiveBox from the app, open server settings, and manage access through the ArchiveBox interface.</p></article>
+  <article><h2>Manage your server</h2><p>Watch current jobs in Activity, start and stop ArchiveBox, and manage server settings and user access.</p></article>
 </section>
 <section id="get-started">
   <h2>Get started on Windows or Linux</h2>
@@ -17,11 +17,11 @@ __HERO_SCREENSHOT__
   <ol>
     <li><a href="https://docs.docker.com/get-started/get-docker/">Install Docker Desktop</a> on Windows, or Docker Desktop / Docker Engine on Linux.</li>
     <li><a href="https://github.com/ArchiveBox/electron-archivebox/releases">Check available desktop downloads</a>. Development builds are also available from the <a href="https://github.com/ArchiveBox/electron-archivebox/actions/workflows/ci.yml">CI build artifacts</a> (GitHub sign-in required).</li>
-    <li>Open the app, choose a collection folder, and start ArchiveBox. The first launch downloads the ArchiveBox Docker image.</li>
+    <li>Open the app, create your local administrator account, and start ArchiveBox. The first launch downloads the ArchiveBox Docker image.</li>
   </ol>
-  <p class="note">ArchiveBox Desktop is an experimental fallback for Windows and Linux. For Apple devices, use <a href="https://app.archivebox.io/">ArchiveBox.app</a>. You can also use <a href="https://archivebox.io/">ArchiveBox Server</a> directly in your browser.</p>
+  <p class="note">ArchiveBox Desktop is an experimental fallback for Windows and Linux, using the current ArchiveBox development backend. For Apple devices, use <a href="https://app.archivebox.io/">ArchiveBox.app</a>. You can also use <a href="https://archivebox.io/">ArchiveBox Server</a> directly in your browser.</p>
 </section>
 <section>
   <h2>See the real app in action</h2>
-  <p>The <a href="__BASE__screenshots/">screenshot gallery</a> is built from automated interactions with the shipped Electron app and a real Docker-backed ArchiveBox server. Each published capture links to its source revision and CI run.</p>
+  <p>The <a href="__BASE__screenshots/">screenshot gallery</a> shows automated interactions with the packaged Electron app. Linux captures exercise a real Docker-backed ArchiveBox server; Windows captures cover first-run setup and Docker connection errors. Each published set identifies its source revision, backend image, and CI run.</p>
 </section>

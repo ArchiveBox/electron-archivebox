@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, Menu, shell, Tray } = require('electron')
+const { app, BrowserWindow, WebContentsView, ipcMain, Menu, shell, Tray, nativeImage, clipboard } = require('electron')
 const fs = require('node:fs/promises')
 const http = require('node:http')
 const os = require('node:os')
@@ -8,7 +8,7 @@ const { createDockerClient } = require('./docker-client')
 const DATA_DIR = process.env.ARCHIVEBOX_DATA_DIR || path.join(os.homedir(), 'archivebox')
 const configuredPort = Number(process.env.ARCHIVEBOX_PORT || 8085)
 const PORT = Number.isInteger(configuredPort) && configuredPort > 0 && configuredPort < 65536 ? configuredPort : 8085
-const IMAGE = 'archivebox/archivebox:latest'
+const IMAGE = 'archivebox/archivebox:dev'
 const ORIGIN = `http://127.0.0.1:${PORT}`
 const SETUP_MARKER = `${DATA_DIR}.desktop-setup-pending`
 const SHELL_FILES = {
@@ -16,8 +16,12 @@ const SHELL_FILES = {
     '/index.html': ['text/html', 'index.html'],
     '/renderer.js': ['text/javascript', 'renderer.js'],
     '/styles.css': ['text/css', 'styles.css'],
+    '/assets/icon.png': ['image/png', 'assets/icon.png'],
 }
 let mainWindow = null
+let archiveView = null
+let archiveVisible = true
+let archiveTop = 126
 let tray = null
 let docker = null
 let container = null
@@ -38,7 +42,9 @@ const exists = async filename => {
     }
 }
 const setState = (phase, message) => {
+    if (state.phase !== phase) console.info(`[service] ${state.phase} → ${phase}: ${message}`)
     state = { ...state, phase, message, setupNeeded }
+    layoutArchiveView()
     if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('service-state', state)
     updateTray()
 }
@@ -48,12 +54,15 @@ const openExternal = url => {
         if (['https:', 'http:'].includes(new URL(url).protocol)) void shell.openExternal(url)
     } catch { /* Ignore invalid or privileged external URLs. */ }
 }
-const configureWindowSecurity = window => {
+const configureWindowSecurity = (window, isShell = false) => {
     const allowed = url => {
         try { return [shellOrigin, ORIGIN].includes(new URL(url).origin) } catch { return false }
     }
     window.webContents.on('will-navigate', (event, url) => {
-        if (new URL(url).origin !== shellOrigin) event.preventDefault()
+        if (isShell ? new URL(url).origin !== shellOrigin : !allowed(url)) {
+            event.preventDefault()
+            if (!isShell) openExternal(url)
+        }
     })
     window.webContents.on('will-frame-navigate', event => {
         if (!allowed(event.url)) event.preventDefault()
@@ -62,7 +71,8 @@ const configureWindowSecurity = window => {
         if (!allowed(url)) event.preventDefault()
     })
     window.webContents.setWindowOpenHandler(({ url }) => {
-        openExternal(url)
+        if (!isShell && allowed(url)) void window.webContents.loadURL(url).catch(error => console.error(error.message))
+        else openExternal(url)
         return { action: 'deny' }
     })
     window.webContents.session.setPermissionRequestHandler((_contents, _permission, callback) => callback(false))
@@ -90,26 +100,50 @@ const startShellServer = async () => {
     })
     shellOrigin = `http://127.0.0.1:${shellServer.address().port}`
 }
-const openWindow = async (route = '/public/') => {
+const layoutArchiveView = () => {
+    if (!archiveView || !mainWindow) return
+    const { width, height } = mainWindow.getContentBounds()
+    const y = Math.min(height, Math.round(archiveTop * mainWindow.webContents.getZoomFactor()))
+    archiveView.setBounds({ x: 0, y, width, height: Math.max(0, height - y) })
+    archiveView.setVisible(archiveVisible && state.phase === 'running')
+}
+const navigateArchive = route => {
+    if (typeof route !== 'string' || !route.startsWith('/') || route.startsWith('//')) return
+    if (archiveView && state.phase === 'running') void archiveView.webContents.loadURL(ORIGIN + route).catch(error => console.error(error.message))
+}
+const openWindow = async route => {
     if (mainWindow) {
         if (mainWindow.isMinimized()) mainWindow.restore()
         mainWindow.show()
         mainWindow.focus()
-        mainWindow.webContents.send('navigate', route)
+        if (route) mainWindow.webContents.send('navigate', route)
         return
     }
     mainWindow = new BrowserWindow({
         width: 1280, height: 860, minWidth: 800, minHeight: 600,
         frame: false, show: false, backgroundColor: '#f7f8fc',
+        icon: path.join(__dirname, 'assets', 'icon.png'),
         webPreferences: {
             contextIsolation: true, nodeIntegration: false, sandbox: true,
             preload: path.join(__dirname, 'preload.js'), webSecurity: true,
         },
     })
-    configureWindowSecurity(mainWindow)
+    configureWindowSecurity(mainWindow, true)
+    archiveView = new WebContentsView({ webPreferences: { contextIsolation: true, nodeIntegration: false, sandbox: true, webSecurity: true } })
+    configureWindowSecurity(archiveView)
+    archiveView.webContents.on('did-fail-load', (_event, code, description, url, isMainFrame) => {
+        if (isMainFrame && code !== -3 && !quitting) setState('error', `Unable to load ${url}: ${description}. Try restarting ArchiveBox.`)
+    })
+    mainWindow.contentView.addChildView(archiveView)
+    mainWindow.on('resize', layoutArchiveView)
+    layoutArchiveView()
     mainWindow.once('ready-to-show', () => mainWindow?.show())
-    mainWindow.on('closed', () => { mainWindow = null })
-    await mainWindow.loadURL(`${shellOrigin}/index.html?route=${encodeURIComponent(route)}`)
+    mainWindow.on('closed', () => {
+        archiveView?.webContents.close()
+        archiveView = null
+        mainWindow = null
+    })
+    await mainWindow.loadURL(`${shellOrigin}/index.html?route=${encodeURIComponent(route || '/public/')}`)
 }
 const createApplicationMenu = () => {
     Menu.setApplicationMenu(Menu.buildFromTemplate([
@@ -117,12 +151,15 @@ const createApplicationMenu = () => {
             { label: 'View Archive', click: () => void openWindow('/public/') },
             { label: 'Add URLs', click: () => void openWindow('/add/') },
             { type: 'separator' },
+            { label: 'Open in Browser', click: () => openExternal(ORIGIN) },
+            { label: 'Copy Server Address', click: () => clipboard.writeText(ORIGIN) },
             { label: 'Settings', click: () => void openWindow('settings') },
             { label: 'Quit ArchiveBox', accelerator: 'CmdOrCtrl+Q', click: () => app.quit() },
         ] },
         { label: 'Archive', submenu: [
             { label: 'View Archive', click: () => void openWindow('/public/') },
             { label: 'Add URLs', click: () => void openWindow('/add/') },
+            { label: 'Activity', click: () => void openWindow('/admin/#progress-monitor') },
             { label: 'Manage Users', click: () => void openWindow('/admin/auth/user/') },
         ] },
         { label: 'View', submenu: [{ role: 'reload' }, { role: 'toggleDevTools' }, { type: 'separator' }, { role: 'resetZoom' }, { role: 'zoomIn' }, { role: 'zoomOut' }] },
@@ -217,7 +254,8 @@ const startDocker = async (credentials, update = false) => {
         await stopContainer()
         setState('starting', 'Starting the local ArchiveBox server…')
         container = await callDocker(docker, 'createContainer', {
-            Image: IMAGE, Cmd: ['archivebox', 'server', '--init', `0.0.0.0:${PORT}`],
+            Image: IMAGE, Cmd: ['archivebox', 'server', `0.0.0.0:${PORT}`],
+            Env: [`BASE_URL=${ORIGIN}`, 'SERVER_SECURITY_MODE=safe-onedomain-nojsreplay'],
             HostConfig: {
                 Binds: [`${DATA_DIR}:/data`],
                 PortBindings: { [`${PORT}/tcp`]: [{ HostIp: '127.0.0.1', HostPort: String(PORT) }] },
@@ -251,25 +289,44 @@ const updateTray = () => {
         { label: `ArchiveBox: ${state.phase}`, enabled: false },
         { label: 'Open ArchiveBox', click: () => void openWindow() },
         { label: 'Add URLs', click: () => void openWindow('/add/') },
+        { label: 'Admin', click: () => void openWindow('/admin/') },
+        { label: 'Activity', click: () => void openWindow('/admin/#progress-monitor') },
+        { label: 'Open in Browser', click: () => openExternal(ORIGIN) },
+        { label: 'Copy Server Address', click: () => clipboard.writeText(ORIGIN) },
         { label: 'Settings', click: () => void openWindow('settings') },
         { type: 'separator' },
-        { label: 'Quit ArchiveBox', click: () => app.quit() },
+        { label: 'Shut Down Server & Quit', click: () => app.quit() },
     ]))
 }
 
+ipcMain.on('archive-navigate', (event, route) => {
+    if (trustedSender(event)) navigateArchive(route)
+})
+ipcMain.on('archive-top', (event, top) => {
+    if (!trustedSender(event) || !Number.isFinite(top) || top < 0 || top > mainWindow.getContentBounds().height) return
+    archiveTop = top
+    layoutArchiveView()
+})
+ipcMain.on('archive-visible', (event, visible) => {
+    if (!trustedSender(event)) return
+    archiveVisible = visible === true
+    layoutArchiveView()
+})
 ipcMain.handle('service-state', event => {
     if (!trustedSender(event)) throw new Error('Untrusted window')
     return state
 })
 ipcMain.handle('service-action', async (event, action, credentials) => {
     if (!trustedSender(event)) throw new Error('Untrusted window')
-    if (busy) return state
+    if (busy && ['start', 'restart', 'update', 'stop'].includes(action)) return state
     if (action === 'start' || action === 'restart' || action === 'update') {
         if (setupNeeded && credentials) {
             if (typeof credentials.username !== 'string' || !/^[\w.@+-]{1,150}$/.test(credentials.username) || typeof credentials.password !== 'string' || credentials.password.length < 8 || (credentials.email && typeof credentials.email !== 'string')) {
                 throw new Error('Enter a valid username and a password of at least eight characters.')
             }
         }
+        if (action === 'start' && state.phase === 'running') return state
+        console.info(`[service] action: ${action}`)
         return startDocker(credentials, action === 'update')
     }
     if (action === 'stop') {
@@ -281,6 +338,11 @@ ipcMain.handle('service-action', async (event, action, credentials) => {
     } else if (action === 'open-data') {
         await fs.mkdir(DATA_DIR, { recursive: true })
         const error = await shell.openPath(DATA_DIR)
+        if (error) throw new Error(error)
+    } else if (action === 'open-browser') openExternal(ORIGIN)
+    else if (action === 'copy-address') clipboard.writeText(ORIGIN)
+    else if (action === 'open-logs') {
+        const error = await shell.openPath(path.join(DATA_DIR, 'logs'))
         if (error) throw new Error(error)
     } else if (action === 'docker-help') openExternal('https://www.docker.com/products/docker-desktop/')
     return state
@@ -313,12 +375,15 @@ const bootstrap = async () => {
         })().catch(error => console.error(error)).finally(() => app.quit())
     })
     await app.whenReady()
+    if (process.platform === 'darwin') app.dock.setIcon(path.join(__dirname, 'assets', 'icon.png'))
     await startShellServer()
     createApplicationMenu()
     try {
-        tray = new Tray(path.join(__dirname, 'icon.png'))
+        const trayIcon = nativeImage.createFromPath(path.join(__dirname, 'assets', process.platform === 'darwin' ? 'trayTemplate.png' : 'tray.png'))
+        if (process.platform === 'darwin') trayIcon.setTemplateImage(true)
+        tray = new Tray(trayIcon)
         tray.setToolTip('ArchiveBox')
-        tray.on('click', () => void openWindow())
+        if (process.platform !== 'darwin') tray.on('click', () => void openWindow())
         updateTray()
     } catch (error) { console.warn(`Tray unavailable: ${error.message}`) }
     setupNeeded = !await exists(path.join(DATA_DIR, 'index.sqlite3')) || await exists(SETUP_MARKER)

@@ -1,6 +1,9 @@
 const { contextBridge, ipcRenderer } = require('electron')
 
 contextBridge.exposeInMainWorld('archivebox', Object.freeze({
+    setArchiveTop: top => ipcRenderer.send('archive-top', top),
+    navigate: route => ipcRenderer.send('archive-navigate', route),
+    setArchiveVisible: visible => ipcRenderer.send('archive-visible', visible),
     getState: () => ipcRenderer.invoke('service-state'),
     action: (action, credentials) => ipcRenderer.invoke('service-action', action, credentials),
     onState: callback => ipcRenderer.on('service-state', (_event, state) => callback(state)),

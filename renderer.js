@@ -9,8 +9,7 @@ const setArchiveRoute = value => {
     settingsOpen = false
     route = normalizeRoute(value)
     if (state?.phase === 'running') {
-        element('frame-loading').classList.remove('is-hidden')
-        element('archivebox-frame').src = `${state.origin}${route}`
+        window.archivebox.navigate(route)
     }
     document.querySelectorAll('[data-route]').forEach(button => button.classList.toggle('is-active', button.dataset.route === route))
     renderState(state)
@@ -25,7 +24,7 @@ const renderState = next => {
     element('service-panel').dataset.state = state.phase
     element('service-panel').hidden = running || settingsOpen
     element('settings-panel').hidden = !settingsOpen
-    element('archivebox-frame').hidden = !running || settingsOpen
+    window.archivebox.setArchiveVisible(running && !settingsOpen)
     element('service-message').textContent = state.message
     element('service-heading').textContent = ({ setup: 'Welcome to ArchiveBox', error: 'ArchiveBox needs your attention', stopped: 'ArchiveBox is stopped', connecting: 'Connecting to Docker', pulling: 'Downloading ArchiveBox', starting: 'Starting ArchiveBox', stopping: 'Stopping ArchiveBox' })[state.phase] || 'ArchiveBox'
     element('setup-form').hidden = !state.setupNeeded || busy
@@ -42,14 +41,14 @@ const renderState = next => {
     element('settings-data').textContent = state.dataDir
     element('settings-origin').textContent = state.origin
     element('settings-image').textContent = state.image
-    if (!running) {
-        element('frame-loading').classList.add('is-hidden')
-        if (wasRunning) element('archivebox-frame').removeAttribute('src')
-    } else if (!wasRunning) setArchiveRoute(route)
+    if (running && !wasRunning) setArchiveRoute(route)
 }
 const action = async (name, credentials) => {
     element('settings-error').textContent = ''
-    try { renderState(await window.archivebox.action(name, credentials)) }
+    try {
+        renderState(await window.archivebox.action(name, credentials))
+        if (name === 'copy-address') element('copy-address').textContent = 'Address copied'
+    }
     catch (error) {
         element('settings-error').textContent = error.message
         element('service-message').textContent = error.message
@@ -69,7 +68,8 @@ window.addEventListener('DOMContentLoaded', async () => {
         void action('start', { username: element('setup-username').value, email: element('setup-email').value, password: element('setup-password').value })
         element('setup-password').value = ''
     })
-    element('archivebox-frame').addEventListener('load', () => element('frame-loading').classList.add('is-hidden'))
+    const content = document.querySelector('.archive-content')
+    new window.ResizeObserver(() => window.archivebox.setArchiveTop(content.getBoundingClientRect().top)).observe(content)
     window.archivebox.onState(renderState)
     window.archivebox.onNavigate(setArchiveRoute)
     renderState(await window.archivebox.getState())

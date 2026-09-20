@@ -53,15 +53,9 @@ button {
 }
 
 .brand-mark {
-  display: inline-grid;
-  place-items: center;
-  width: 23px;
-  height: 23px;
-  border-radius: 6px;
-  color: #202942;
-  background: #91b7ff;
-  font-size: 14px;
-  font-weight: 800;
+  width: 26px;
+  height: 26px;
+  object-fit: contain;
 }
 
 .window-controls {
@@ -157,29 +151,6 @@ button {
   background: #fff;
 }
 
-#archivebox-frame {
-  display: block;
-  width: 100%;
-  height: 100%;
-  border: 0;
-  background: #fff;
-}
-
-.frame-loading {
-  position: absolute;
-  z-index: 1;
-  inset: 0;
-  display: grid;
-  place-items: center;
-  color: #718099;
-  background: #fff;
-  font-size: 13px;
-  pointer-events: none;
-}
-
-.frame-loading.is-hidden {
-  display: none;
-}
 
 [hidden] { display: none !important; }
 .desktop-window { height: 100vh; min-height: 0; }

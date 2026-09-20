@@ -10,7 +10,7 @@
     <div id="app" class="desktop-window">
       <header class="window-titlebar">
         <div class="window-title" aria-label="ArchiveBox Desktop">
-          <span class="brand-mark">A</span>
+          <img class="brand-mark" src="./assets/icon.png" alt="">
           <span>ArchiveBox Desktop</span>
         </div>
         <div class="window-controls" aria-label="Window controls">
@@ -32,6 +32,7 @@
       <nav class="app-toolbar" aria-label="ArchiveBox navigation">
         <button class="toolbar-button" type="button" data-route="/public/">View archive</button>
         <button class="toolbar-button" type="button" data-route="/add/">Add URLs</button>
+        <button id="activity-button" class="toolbar-button" type="button" data-route="/admin/#progress-monitor">Activity</button>
         <button class="toolbar-button" type="button" data-route="/admin/auth/user/">Manage users</button>
         <button id="settings-button" class="toolbar-button" type="button">Settings</button>
         <span id="service-status" class="service-status">Connecting to local service…</span>
@@ -69,12 +70,13 @@
             <button id="restart-service" class="toolbar-button" data-action="restart" type="button">Restart ArchiveBox</button>
             <button id="update-service" class="toolbar-button" data-action="update" type="button">Update ArchiveBox</button>
             <button class="toolbar-button" data-action="open-data" type="button">Open archive folder</button>
+            <button class="toolbar-button" data-action="open-logs" type="button">Open logs</button>
+            <button class="toolbar-button" data-action="open-browser" type="button">Open in browser ↗</button>
+            <button id="copy-address" class="toolbar-button" data-action="copy-address" type="button">Copy server address</button>
           </div>
           <p class="hint">Update downloads the latest ArchiveBox image and restarts the service. Closing the window keeps ArchiveBox in the tray; Quit stops the service.</p>
           <p id="settings-error" role="alert"></p>
         </section>
-        <div id="frame-loading" class="frame-loading is-hidden">Loading ArchiveBox…</div>
-        <iframe id="archivebox-frame" title="ArchiveBox" loading="eager" sandbox="allow-scripts allow-forms allow-same-origin allow-downloads allow-popups" hidden></iframe>
       </main>
     </div>
     <script src="./renderer.js"></script>

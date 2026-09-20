@@ -18,11 +18,12 @@ For macOS and iOS, use [ArchiveBox.app](https://archivebox.github.io/ios-archive
 3. Open ArchiveBox Desktop, choose your local administrator credentials, and start
    your collection. The first launch downloads the ArchiveBox image.
 4. Sign in, add URLs, search your archive, open saved pages, and manage users.
-   Settings shows the collection location and service controls.
+   Activity shows the live crawl monitor. Settings shows the collection location and service controls.
 
 Your archive is stored in `~/archivebox` (your Windows user folder on Windows).
 Stopping or quitting the app stops its container and preserves your files. Docker
-must remain running while using the app. This is an early desktop fallback;
+must remain running while using the app. The app uses the current ArchiveBox `dev`
+image for its live activity UI. This is an early desktop fallback;
 Docker installation and updates are still managed by Docker itself.
 
 ## Develop
