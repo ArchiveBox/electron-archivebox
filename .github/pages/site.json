@@ -1,0 +1,8 @@
+{
+  "name": "Desktop App",
+  "url": "https://electron.archivebox.io/",
+  "pages": [
+    "index.html",
+    "screenshots/index.html"
+  ]
+}

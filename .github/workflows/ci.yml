@@ -218,6 +218,7 @@ jobs:
         with:
           name: archivebox-screenshots-macos
           path: artifacts/screenshots/macos
+      - uses: astral-sh/setup-uv@v7
       - name: Build site and check capture completeness
         run: npm run build-site -- --screenshots-dir artifacts/screenshots
       - uses: actions/upload-artifact@v4
