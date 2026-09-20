@@ -174,3 +174,11 @@ p { color: #586680; font-size: 14px; line-height: 1.6; }
 dt { margin-top: 24px; font-size: 12px; font-weight: 700; color: #718099; }
 dd { margin: 6px 0; overflow-wrap: anywhere; }
 #settings-error { color: #a52c3e; }
+
+.network-form { padding: 18px 22px; margin: 20px 0; border: 1px solid #dce1eb; border-radius: 10px; background: #fff; }
+.network-form h2 { margin: 0 0 16px; font-size: 18px; }
+.network-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 20px; }
+.network-grid label { display: grid; gap: 6px; font-size: 13px; font-weight: 600; }
+.network-grid input, .network-grid select { width: 100%; padding: 9px 10px; border: 1px solid #ccd5e5; border-radius: 6px; background: #fff; color: #202942; font: inherit; }
+.network-base-label { grid-column: 1 / -1; }
+#network-status { display: inline-block; margin: 8px 0 0 12px; max-width: 70%; font-size: 12px; white-space: pre-wrap; overflow-wrap: anywhere; }

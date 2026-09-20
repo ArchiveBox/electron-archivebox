@@ -2,14 +2,17 @@ const { app, BrowserWindow, WebContentsView, ipcMain, Menu, shell, Tray, nativeI
 const fs = require('node:fs/promises')
 const http = require('node:http')
 const os = require('node:os')
+const { isIP } = require('node:net')
 const path = require('node:path')
 const { createDockerClient } = require('./docker-client')
 
 const DATA_DIR = process.env.ARCHIVEBOX_DATA_DIR || path.join(os.homedir(), 'archivebox')
 const configuredPort = Number(process.env.ARCHIVEBOX_PORT || 5797)
-const PORT = Number.isInteger(configuredPort) && configuredPort > 0 && configuredPort < 65536 ? configuredPort : 5797
+let PORT = Number.isInteger(configuredPort) && configuredPort > 0 && configuredPort < 65536 ? configuredPort : 5797
 const IMAGE = 'archivebox/archivebox:dev'
-const ORIGIN = `http://127.0.0.1:${PORT}`
+let ORIGIN = `http://127.0.0.1:${PORT}`
+const CONTAINER_PORT = 5797
+let network = { scope: 'localhost', bindAddress: '127.0.0.1', port: PORT, baseURL: '' }
 const SETUP_MARKER = `${DATA_DIR}.desktop-setup-pending`
 const SHELL_FILES = {
     '/': ['text/html', 'index.html'],
@@ -30,7 +33,8 @@ let shellOrigin = null
 let quitting = false
 let busy = false
 let setupNeeded = false
-let state = { phase: 'starting', message: 'Opening ArchiveBox…', dataDir: DATA_DIR, origin: ORIGIN, image: IMAGE }
+let state = { phase: 'starting', message: 'Opening ArchiveBox…', dataDir: DATA_DIR, origin: ORIGIN, image: IMAGE, network }
+let applyingNetwork = false
 
 const callDocker = (object, method, ...args) => new Promise((resolve, reject) => {
     object[method](...args, (error, result) => error ? reject(error) : resolve(result))
@@ -40,6 +44,33 @@ const exists = async filename => {
         if (error.code === 'ENOENT') return false
         throw error
     }
+}
+const validateNetwork = value => {
+    if (!value || !['localhost', 'lan', 'custom'].includes(value.scope)) throw new Error('Choose a network access option.')
+    const port = Number(value.port)
+    if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error('Choose a port between 1 and 65535.')
+    const bindAddress = value.scope === 'localhost' ? '127.0.0.1' : value.scope === 'lan' ? '0.0.0.0' : String(value.bindAddress || '').trim()
+    if (!isIP(bindAddress)) throw new Error('Enter a valid IPv4 or IPv6 interface address.')
+    let baseURL = String(value.baseURL || '').trim()
+    if (baseURL) {
+        let parsed
+        try { parsed = new URL(baseURL) } catch { throw new Error('Enter an HTTP or HTTPS base URL, or leave it blank for automatic addresses.') }
+        if (!['http:', 'https:'].includes(parsed.protocol) || parsed.username || parsed.password || parsed.pathname !== '/' || parsed.search || parsed.hash) throw new Error('The base URL must be an HTTP or HTTPS origin without credentials, a path, query, or fragment.')
+        baseURL = parsed.origin
+    }
+    return { scope: value.scope, bindAddress, port, baseURL }
+}
+const setNetwork = next => {
+    network = next
+    PORT = network.port
+    ORIGIN = `http://127.0.0.1:${PORT}`
+    state = { ...state, network, origin: ORIGIN }
+}
+const networkFile = () => path.join(app.getPath('userData'), 'network.json')
+const saveNetwork = async () => {
+    const filename = networkFile()
+    await fs.writeFile(filename + '.tmp', JSON.stringify(network, null, 2) + '\n')
+    await fs.rename(filename + '.tmp', filename)
 }
 const setState = (phase, message) => {
     if (state.phase !== phase) console.info(`[service] ${state.phase} → ${phase}: ${message}`)
@@ -56,7 +87,7 @@ const openExternal = url => {
 }
 const configureWindowSecurity = (window, isShell = false) => {
     const allowed = url => {
-        try { return [shellOrigin, ORIGIN].includes(new URL(url).origin) } catch { return false }
+        try { return [shellOrigin, ORIGIN, network.baseURL].includes(new URL(url).origin) } catch { return false }
     }
     window.webContents.on('will-navigate', (event, url) => {
         if (isShell ? new URL(url).origin !== shellOrigin : !allowed(url)) {
@@ -155,8 +186,8 @@ const createApplicationMenu = () => {
             { label: 'View Archive', click: () => void openWindow('/public/') },
             { label: 'Add URLs', click: () => void openWindow('/add/') },
             { type: 'separator' },
-            { label: 'Open in Browser', click: () => openExternal(ORIGIN) },
-            { label: 'Copy Server Address', click: () => clipboard.writeText(ORIGIN) },
+            { label: 'Open in Browser', click: () => openExternal(network.baseURL || ORIGIN) },
+            { label: 'Copy Server Address', click: () => clipboard.writeText(network.baseURL || ORIGIN) },
             { label: 'Settings', click: () => void openWindow('settings') },
             { label: 'Quit ArchiveBox', accelerator: 'CmdOrCtrl+Q', click: () => app.quit() },
         ] },
@@ -258,13 +289,13 @@ const startDocker = async (credentials, update = false) => {
         await stopContainer()
         setState('starting', 'Starting the local ArchiveBox server…')
         container = await callDocker(docker, 'createContainer', {
-            Image: IMAGE, Cmd: ['archivebox', 'server', `0.0.0.0:${PORT}`],
-            Env: [`BASE_URL=${ORIGIN}`, 'SERVER_SECURITY_MODE=safe-onedomain-nojsreplay'],
+            Image: IMAGE, Cmd: ['archivebox', 'server', `0.0.0.0:${CONTAINER_PORT}`],
+            Env: [`BASE_URL=${network.baseURL}`, `CSRF_TRUSTED_ORIGINS=${[ORIGIN, network.baseURL].filter(Boolean).join(',')}`, 'SERVER_SECURITY_MODE=safe-onedomain-nojsreplay'],
             HostConfig: {
                 Binds: [`${DATA_DIR}:/data`],
-                PortBindings: { [`${PORT}/tcp`]: [{ HostIp: '127.0.0.1', HostPort: String(PORT) }] },
+                PortBindings: { [`${CONTAINER_PORT}/tcp`]: [...new Set(network.scope === 'custom' && network.bindAddress !== '0.0.0.0' ? ['127.0.0.1', network.bindAddress] : [network.bindAddress])].map(HostIp => ({ HostIp, HostPort: String(PORT) })) },
             },
-            ExposedPorts: { [`${PORT}/tcp`]: {} },
+            ExposedPorts: { [`${CONTAINER_PORT}/tcp`]: {} },
             name: process.env.ARCHIVEBOX_CONTAINER_NAME || `archivebox-desktop-${process.pid}`,
         })
         await callDocker(container, 'start')
@@ -295,8 +326,8 @@ const updateTray = () => {
         { label: 'Add URLs', click: () => void openWindow('/add/') },
         { label: 'Admin', click: () => void openWindow('/admin/') },
         { label: 'Activity', click: () => void openWindow('/admin/#progress-monitor') },
-        { label: 'Open in Browser', click: () => openExternal(ORIGIN) },
-        { label: 'Copy Server Address', click: () => clipboard.writeText(ORIGIN) },
+        { label: 'Open in Browser', click: () => openExternal(network.baseURL || ORIGIN) },
+        { label: 'Copy Server Address', click: () => clipboard.writeText(network.baseURL || ORIGIN) },
         { label: 'Settings', click: () => void openWindow('settings') },
         { type: 'separator' },
         { label: 'Shut Down Server & Quit', click: () => app.quit() },
@@ -322,7 +353,27 @@ ipcMain.handle('service-state', event => {
 })
 ipcMain.handle('service-action', async (event, action, credentials) => {
     if (!trustedSender(event)) throw new Error('Untrusted window')
-    if (busy && ['start', 'restart', 'update', 'stop'].includes(action)) return state
+    if ((busy || applyingNetwork) && ['start', 'restart', 'update', 'stop', 'save-network'].includes(action)) throw new Error('Wait for the current service operation to finish.')
+    if (action === 'save-network') {
+        const next = validateNetwork(credentials)
+        const previous = network
+        applyingNetwork = true
+        try {
+            setNetwork(next)
+            if (!setupNeeded) {
+                await startDocker()
+                if (state.phase !== 'running') throw new Error(state.message)
+            }
+            await saveNetwork()
+            if (setupNeeded) setState('setup', 'Network settings saved. Create your administrator account to continue.')
+            return state
+        } catch (error) {
+            setNetwork(previous)
+            if (!setupNeeded) await startDocker()
+            else setState('setup', 'Create your local ArchiveBox administrator account.')
+            throw new Error(`Network settings were not saved: ${error.message}`)
+        } finally { applyingNetwork = false }
+    }
     if (action === 'start' || action === 'restart' || action === 'update') {
         if (setupNeeded && credentials) {
             if (typeof credentials.username !== 'string' || !/^[\w.@+-]{1,150}$/.test(credentials.username) || typeof credentials.password !== 'string' || credentials.password.length < 8 || (credentials.email && typeof credentials.email !== 'string')) {
@@ -343,8 +394,8 @@ ipcMain.handle('service-action', async (event, action, credentials) => {
         await fs.mkdir(DATA_DIR, { recursive: true })
         const error = await shell.openPath(DATA_DIR)
         if (error) throw new Error(error)
-    } else if (action === 'open-browser') openExternal(ORIGIN)
-    else if (action === 'copy-address') clipboard.writeText(ORIGIN)
+    } else if (action === 'open-browser') openExternal(network.baseURL || ORIGIN)
+    else if (action === 'copy-address') clipboard.writeText(network.baseURL || ORIGIN)
     else if (action === 'open-logs') {
         const error = await shell.openPath(path.join(DATA_DIR, 'logs'))
         if (error) throw new Error(error)
@@ -379,6 +430,8 @@ const bootstrap = async () => {
         })().catch(error => console.error(error)).finally(() => app.quit())
     })
     await app.whenReady()
+    try { setNetwork(validateNetwork(JSON.parse(await fs.readFile(networkFile(), 'utf8')))) }
+    catch (error) { if (error.code !== 'ENOENT') throw error }
     if (process.platform === 'darwin') app.dock.setIcon(path.join(__dirname, 'assets', 'icon.png'))
     await startShellServer()
     createApplicationMenu()

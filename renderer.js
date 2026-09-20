@@ -1,6 +1,8 @@
 let state = null
 let route = new URLSearchParams(window.location.search).get('route') || '/public/'
 let settingsOpen = route === 'settings'
+let networkSaving = false
+let renderedNetwork = ''
 const element = id => document.getElementById(id)
 const busyPhases = ['connecting', 'pulling', 'starting', 'stopping']
 const normalizeRoute = value => value?.startsWith('/') && !value.startsWith('//') ? value : '/public/'
@@ -41,7 +43,21 @@ const renderState = next => {
     element('settings-data').textContent = state.dataDir
     element('settings-origin').textContent = state.origin
     element('settings-image').textContent = state.image
-    if (running && !wasRunning) setArchiveRoute(route)
+    const networkKey = JSON.stringify(state.network)
+    if (state.network && networkKey !== renderedNetwork) {
+        element('network-scope').value = state.network.scope
+        element('network-bind-address').value = state.network.bindAddress
+        element('network-port').value = state.network.port
+        element('network-base-url').value = state.network.baseURL
+        element('network-bind-label').hidden = state.network.scope !== 'custom'
+        renderedNetwork = networkKey
+    }
+    element('network-save').textContent = state.setupNeeded ? 'Save network settings' : 'Apply & restart'
+    element('network-form').querySelectorAll('input, select, button').forEach(control => { control.disabled = busy || networkSaving })
+    if (running && !wasRunning) {
+        if (settingsOpen) window.archivebox.navigate(normalizeRoute(route))
+        else setArchiveRoute(route)
+    }
 }
 const action = async (name, credentials) => {
     element('settings-error').textContent = ''
@@ -63,6 +79,21 @@ window.addEventListener('DOMContentLoaded', async () => {
     document.querySelectorAll('[data-action]').forEach(button => button.addEventListener('click', () => void action(button.dataset.action)))
     element('settings-button').addEventListener('click', () => { settingsOpen = !settingsOpen; renderState(state) })
     element('close-settings').addEventListener('click', () => { settingsOpen = false; renderState(state) })
+    element('setup-network-settings').addEventListener('click', () => { settingsOpen = true; renderState(state) })
+    element('network-scope').addEventListener('change', () => { element('network-bind-label').hidden = element('network-scope').value !== 'custom' })
+    element('network-form').addEventListener('submit', async event => {
+        event.preventDefault()
+        const settings = { scope: element('network-scope').value, bindAddress: element('network-bind-address').value, port: Number(element('network-port').value), baseURL: element('network-base-url').value }
+        networkSaving = true
+        element('network-status').textContent = state.setupNeeded ? 'Saving network settings…' : 'Applying network settings and restarting…'
+        renderState(state)
+        try {
+            const next = await window.archivebox.action('save-network', settings)
+            renderState(next)
+            element('network-status').textContent = `Network settings saved. Listen address: ${next.network.bindAddress}:${next.network.port}.`
+        } catch (error) { element('network-status').textContent = error.message }
+        finally { networkSaving = false; renderState(state) }
+    })
     element('setup-form').addEventListener('submit', event => {
         event.preventDefault()
         void action('start', { username: element('setup-username').value, email: element('setup-email').value, password: element('setup-password').value })

@@ -2,7 +2,6 @@ const assert = require('node:assert/strict')
 const { execFileSync } = require('node:child_process')
 const { createHash } = require('node:crypto')
 const fs = require('node:fs/promises')
-const net = require('node:net')
 const os = require('node:os')
 const path = require('node:path')
 const { _electron: electron } = require('playwright')
@@ -12,13 +11,14 @@ const ROOT_DIR = path.resolve(__dirname, '..')
 const OUTPUT_DIR = path.resolve(process.env.SCREENSHOT_DIR || path.join(ROOT_DIR, 'artifacts', 'screenshots'))
 const IMAGE = 'archivebox/archivebox:dev'
 const STARTUP_ONLY = process.argv.includes('--startup-only')
+const CAPTURE_LAN = process.platform === 'linux' && process.env.GITHUB_ACTIONS === 'true'
 const USERNAME = 'archivebox'
 const PASSWORD = 'archivebox-e2e-password'
 const EMAIL = 'archivebox@example.com'
 const REQUIRED_SCREENS = STARTUP_ONLY ? ['setup', 'docker-error'] : [
     'setup', 'startup', 'empty-archive', 'login', 'add-urls', 'add-options', 'activity', 'archive',
     'search', 'snapshot-overview', 'snapshot', 'archive-grid', 'tags', 'archive-log', 'manage-users', 'add-user', 'edit-user',
-    'settings', 'stopped', 'restarted', 'docker-error',
+    'settings', 'network-settings', ...(CAPTURE_LAN ? ['network-lan'] : []), 'stopped', 'restarted', 'docker-error',
 ]
 const docker = STARTUP_ONLY ? null : createDockerClient({ timeout: 120000 })
 const screenshots = []
@@ -26,16 +26,8 @@ const applications = new WeakMap()
 const callDocker = (object, method, ...args) => new Promise((resolve, reject) => {
     object[method](...args, (error, result) => error ? reject(error) : resolve(result))
 })
-const getFreePort = () => new Promise((resolve, reject) => {
-    const server = net.createServer()
-    server.once('error', reject)
-    server.listen(0, '127.0.0.1', () => {
-        const { port } = server.address()
-        server.close(() => resolve(port))
-    })
-})
 const contentPage = async (electronApp, shellPage, port) => {
-    const page = electronApp.context().pages().find(candidate => candidate !== shellPage && candidate.url().startsWith(`http://127.0.0.1:${port}/`))
+    const page = electronApp.context().pages().find(candidate => candidate !== shellPage && ['127.0.0.1', 'localhost'].some(host => candidate.url().startsWith(`http://${host}:${port}/`)))
     assert.ok(page, 'The real ArchiveBox WebContentsView is available to automation')
     page.setDefaultTimeout(30000)
     return page
@@ -50,7 +42,7 @@ const waitForRunning = async page => {
 const capture = async (page, id, title, description, checks) => {
     const file = `${id}.png`
     const electronApp = applications.get(page)
-    const frame = electronApp.context().pages().find(candidate => candidate !== page && candidate.url().startsWith('http://127.0.0.1:'))
+    const frame = electronApp.context().pages().find(candidate => candidate !== page && /^https?:/.test(candidate.url()))
     // Let both renderers finish the paint requested by the preceding user action.
     for (const surface of [page, frame].filter(Boolean)) {
         await surface.evaluate(() => new Promise(resolve => window.requestAnimationFrame(() => window.requestAnimationFrame(resolve))))
@@ -193,6 +185,8 @@ const captureRealScreens = async ({ dataDir, userDataDir, port, containerName })
 
         await frame.locator('#searchbar').fill('example.com')
         await frame.locator('#searchbar').press('Enter')
+        await frame.waitForURL(url => url.searchParams.get('q') === 'example.com')
+        await frame.waitForLoadState('load')
         await frame.locator('#result_list tbody tr').nth(1).waitFor({ state: 'detached' })
         await frame.locator('#result_list tbody tr').filter({ hasText: 'https://example.com' }).waitFor()
         assert.equal(await frame.locator('#result_list tbody tr').count(), 1)
@@ -247,6 +241,32 @@ const captureRealScreens = async ({ dataDir, userDataDir, port, containerName })
         await page.locator('#settings-button').click()
         await page.locator('#settings-panel').waitFor()
         await capture(page, 'settings', 'Desktop settings', 'The shipped settings panel shows the actual local collection and service controls.', ['Settings opened using toolbar', 'Live service controls visible'])
+        const configureNetwork = async configuration => {
+            await page.locator('#network-scope').selectOption(configuration.scope)
+            if (configuration.scope === 'custom') await page.locator('#network-bind-address').fill(configuration.bindAddress)
+            await page.locator('#network-port').fill(String(configuration.port))
+            await page.locator('#network-base-url').fill(configuration.baseURL)
+            await page.locator('#network-save').click()
+            await page.locator('#network-status').filter({ hasText: 'Network settings saved.' }).waitFor({ timeout: 180000 })
+            await waitForRunning(page)
+            assert.deepEqual(JSON.parse(await fs.readFile(path.join(userDataDir, 'network.json'), 'utf8')), configuration, 'The UI saves the selected network configuration')
+            const actual = await callDocker(docker.getContainer(containerName), 'inspect')
+            assert.equal(actual.State.Running, true)
+            assert.deepEqual(actual.HostConfig.PortBindings['5797/tcp'], [{ HostIp: configuration.bindAddress, HostPort: String(configuration.port) }], 'Docker publishes the interface and port selected in Settings')
+            assert.ok(actual.Config.Env.includes(`BASE_URL=${configuration.baseURL}`), 'Docker receives the selected base URL')
+            assert.ok(actual.Config.Env.includes(`CSRF_TRUSTED_ORIGINS=${[`http://127.0.0.1:${configuration.port}`, configuration.baseURL].filter(Boolean).join(',')}`), 'Docker receives the actual local and configured trusted origins')
+            const response = await fetch(`http://127.0.0.1:${configuration.port}/public/`, { redirect: 'manual' })
+            assert.ok([200, 301, 302].includes(response.status), `The real ArchiveBox service responds on configured port ${configuration.port}`)
+            await page.locator('#network-form').scrollIntoViewIfNeeded()
+        }
+        const customPort = port === 5798 ? 5799 : 5798
+        await configureNetwork({ scope: 'custom', bindAddress: '127.0.0.1', port: customPort, baseURL: `http://localhost:${customPort}` })
+        await capture(page, 'network-settings', 'Network settings', `Settings applies a custom loopback interface, port ${customPort} and base URL to the real Docker service.`, ['Network settings submitted through the visible form', 'Persistent profile configuration verified', 'Running Docker port binding and BASE_URL verified'])
+        if (CAPTURE_LAN) {
+            await configureNetwork({ scope: 'lan', bindAddress: '0.0.0.0', port, baseURL: '' })
+            await capture(page, 'network-lan', 'LAN access', `The isolated Linux CI app is running with LAN access enabled on port ${port}.`, ['LAN selected through the visible form', 'Running Docker binds 0.0.0.0', 'Automatic base URL retained'])
+        }
+        await configureNetwork({ scope: 'localhost', bindAddress: '127.0.0.1', port, baseURL: '' })
         await page.locator('#stop-service').click()
         await page.locator('#close-settings').click()
         await page.locator('#service-panel[data-state="stopped"]').waitFor()
@@ -294,7 +314,8 @@ const main = async () => {
     const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'archivebox-electron-e2e-'))
     const dataDir = path.join(tempDir, 'data')
     const userDataDir = path.join(tempDir, 'profile')
-    const port = await getFreePort()
+    const port = Number(process.env.ARCHIVEBOX_PORT || 5797)
+    assert.ok(Number.isInteger(port) && port > 0 && port < 65536, 'ARCHIVEBOX_PORT must be a valid TCP port')
     const containerName = `archivebox-electron-e2e-${process.pid}-${Date.now()}`
     await fs.mkdir(dataDir, { mode: 0o777 })
     await fs.chmod(dataDir, 0o777)

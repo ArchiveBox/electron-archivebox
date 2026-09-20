@@ -54,6 +54,7 @@
               <input id="setup-password" name="password" type="password" autocomplete="new-password" required minlength="8">
               <p class="hint">Use at least eight characters. You will use this account to sign in to ArchiveBox.</p>
               <button id="setup-submit" class="primary-button" type="submit">Create archive</button>
+              <button id="setup-network-settings" class="toolbar-button" type="button">Network settings</button>
             </form>
             <div class="service-actions">
               <button id="start-service" class="primary-button" type="button" data-action="start" hidden>Start ArchiveBox</button>
@@ -64,6 +65,18 @@
         <section id="settings-panel" class="settings-panel" hidden>
           <div class="settings-heading"><h1>Settings</h1><button id="close-settings" class="toolbar-button" type="button">Back to archive</button></div>
           <p>Your archive is stored on this computer. Docker runs the ArchiveBox service in the background.</p>
+          <form id="network-form" class="network-form">
+            <h2>Network access</h2>
+            <div class="network-grid">
+              <label>Listen on<select id="network-scope"><option value="localhost">This computer only (127.0.0.1)</option><option value="lan">All interfaces / LAN (0.0.0.0)</option><option value="custom">A specific interface</option></select></label>
+              <label>Port<input id="network-port" type="number" min="1" max="65535" required value="5797"></label>
+              <label id="network-bind-label" hidden>Interface IP address<input id="network-bind-address" type="text" placeholder="192.168.1.10"></label>
+              <label class="network-base-label">Base URL (optional)<input id="network-base-url" type="url" placeholder="Automatic — use each request’s address"></label>
+            </div>
+            <p class="hint">Local access stays available. All interfaces exposes your archive to devices that can reach this computer. A base URL sets the address used in links; HTTPS requires your own reverse proxy.</p>
+            <button id="network-save" class="primary-button" type="submit">Apply &amp; restart</button>
+            <span id="network-status" role="status"></span>
+          </form>
           <dl><dt>Service</dt><dd id="settings-status"></dd><dt>Archive folder</dt><dd id="settings-data"></dd><dt>Local address</dt><dd id="settings-origin"></dd><dt>Docker image</dt><dd id="settings-image"></dd></dl>
           <div class="service-actions">
             <button id="stop-service" class="toolbar-button" data-action="stop" type="button">Stop ArchiveBox</button>

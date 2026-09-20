@@ -24,6 +24,10 @@ For the recommended native macOS and iOS experience, use [ArchiveBox.app](https:
    Activity shows the live crawl monitor. Settings shows the collection location and service controls.
 
 Your archive is stored in `~/archivebox` (your Windows user folder on Windows).
+In Settings, choose localhost-only access, all network interfaces for LAN access,
+or a specific interface address. You can also edit the port and public base URL.
+Apply & restart checks the new configuration before saving it; your collection
+stays in place. Leave the base URL blank to use the address you connect through.
 Stopping or quitting the app stops its container and preserves your files. Docker
 must remain running while using the app. The app uses the current ArchiveBox `dev`
 image for its live activity UI.
