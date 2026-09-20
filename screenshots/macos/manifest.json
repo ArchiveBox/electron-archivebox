@@ -1,0 +1,366 @@
+{
+  "schemaVersion": 1,
+  "captureScope": "full",
+  "captureMethod": "screencapture-window",
+  "packaged": false,
+  "generatedAt": "2026-09-20T07:14:02.544Z",
+  "commit": "a6a31ccde4ab0b43e7e106f30b3f890c9157544f",
+  "dirty": true,
+  "workflowRun": null,
+  "appVersion": "0.7.0",
+  "electronVersion": "44.4.3",
+  "playwrightVersion": "1.63.0",
+  "platform": "darwin-arm64",
+  "dockerImage": {
+    "reference": "archivebox/archivebox:dev",
+    "id": "sha256:116f744dea80cdc5d41a353a87edd6751ca8d03476e049101566a4ab766727a7",
+    "repoDigests": [
+      "archivebox/archivebox@sha256:116f744dea80cdc5d41a353a87edd6751ca8d03476e049101566a4ab766727a7"
+    ]
+  },
+  "requiredScreenshots": [
+    "setup",
+    "startup",
+    "empty-archive",
+    "login",
+    "add-urls",
+    "add-options",
+    "activity",
+    "archive",
+    "search",
+    "snapshot-overview",
+    "snapshot",
+    "archive-grid",
+    "tags",
+    "archive-log",
+    "manage-users",
+    "add-user",
+    "edit-user",
+    "settings",
+    "stopped",
+    "restarted",
+    "docker-error"
+  ],
+  "screenshots": [
+    {
+      "id": "setup",
+      "file": "setup.png",
+      "title": "First-run setup",
+      "description": "The ordinary desktop app opens a fresh collection and asks for its administrator account.",
+      "checks": [
+        "New empty data directory",
+        "Visible administrator setup form"
+      ],
+      "capturedAt": "2026-09-20T07:13:30.263Z",
+      "route": null,
+      "width": 2560,
+      "height": 1720,
+      "sha256": "6747a5aef0841dd12bcef00ef402ac32f8a8c0389565ceaf590d4cb836e47364"
+    },
+    {
+      "id": "startup",
+      "file": "startup.png",
+      "title": "Starting ArchiveBox",
+      "description": "The app connects to Docker and initializes the collection after submitting the setup form.",
+      "checks": [
+        "Setup submitted through the visible form",
+        "Real service startup panel"
+      ],
+      "capturedAt": "2026-09-20T07:13:30.475Z",
+      "route": null,
+      "width": 2560,
+      "height": 1720,
+      "sha256": "0aa25fa9435dd007ce0b10f5c68a495cefcc1732d7874505ae60e68af567da8e"
+    },
+    {
+      "id": "empty-archive",
+      "file": "empty-archive.png",
+      "title": "Empty collection",
+      "description": "The newly initialized collection is ready for its first saved page.",
+      "checks": [
+        "Live ArchiveBox public index",
+        "Zero snapshot rows"
+      ],
+      "capturedAt": "2026-09-20T07:13:40.434Z",
+      "route": "/public/",
+      "width": 2560,
+      "height": 1720,
+      "sha256": "b20a7c82dc3e666a95b9390969b72fcda1e23adaadf31d970d191df8d71c2dfd"
+    },
+    {
+      "id": "login",
+      "file": "login.png",
+      "title": "Sign in",
+      "description": "ArchiveBox requires the administrator created during setup before adding pages.",
+      "checks": [
+        "Real authentication form reached by Add URLs"
+      ],
+      "capturedAt": "2026-09-20T07:13:40.671Z",
+      "route": "/admin/login/?next=/add/",
+      "width": 2560,
+      "height": 1720,
+      "sha256": "502a51a1e1d722e117b4ee980cb6eb3ed7218e48a012a41c2ac429eb670c0168"
+    },
+    {
+      "id": "add-urls",
+      "file": "add-urls.png",
+      "title": "Add URLs",
+      "description": "Two public websites are entered in the actual ArchiveBox form, with title, HTML and browser screenshot extraction selected.",
+      "checks": [
+        "Authenticated Add URLs form",
+        "Two entered URLs",
+        "Real title, wget and screenshot extractors selected"
+      ],
+      "capturedAt": "2026-09-20T07:13:41.859Z",
+      "route": "/add/",
+      "width": 2560,
+      "height": 1720,
+      "sha256": "1e687c8642ca602887a8b4489ebdf2de37ee21ec730ed6dee72df01f64c35441"
+    },
+    {
+      "id": "add-options",
+      "file": "add-options.png",
+      "title": "Archive options",
+      "description": "Scrolling the real Add URLs form reveals the parser, tags, depth, extraction methods and submit button.",
+      "checks": [
+        "Actual form scrolled to its lower controls",
+        "Title, wget and screenshot methods selected"
+      ],
+      "capturedAt": "2026-09-20T07:13:41.987Z",
+      "route": "/add/",
+      "width": 2560,
+      "height": 1720,
+      "sha256": "740b40f835dae6a8c92f8bb643421727399608cedb2fd2ebde32d5b91910860d"
+    },
+    {
+      "id": "activity",
+      "file": "activity.png",
+      "title": "Live activity",
+      "description": "The Activity button opens ArchiveBox’s live progress monitor while the submitted crawl runs real extractors.",
+      "checks": [
+        "Activity clicked in desktop toolbar",
+        "Live crawl state is started",
+        "Actual progress monitor receives running-job data"
+      ],
+      "capturedAt": "2026-09-20T07:13:44.733Z",
+      "route": "/admin/",
+      "width": 2560,
+      "height": 1720,
+      "sha256": "4bcb872d9244acfb8c5ca3136606920f44003e359fe74f55d4a8599a7cf4b6f2"
+    },
+    {
+      "id": "archive",
+      "file": "archive.png",
+      "title": "Saved pages",
+      "description": "The collection lists two real pages saved through Add URLs, with extracted titles and tags.",
+      "checks": [
+        "Two real snapshot rows",
+        "Both extracted titles equal Example Domain",
+        "Tag desktop-demo visible"
+      ],
+      "capturedAt": "2026-09-20T07:13:49.797Z",
+      "route": "/admin/core/snapshot/",
+      "width": 2560,
+      "height": 1720,
+      "sha256": "4254f6477ae619d7b0c9e2a79093d54b555f22988c4693c26d8c4cedc54bc413"
+    },
+    {
+      "id": "search",
+      "file": "search.png",
+      "title": "Search the archive",
+      "description": "Searching for example.com filters the two-page collection to one matching snapshot.",
+      "checks": [
+        "Search submitted using visible form",
+        "One matching result"
+      ],
+      "capturedAt": "2026-09-20T07:13:50.731Z",
+      "route": "/admin/core/snapshot/?search_mode=deep%3Asonic&q=example.com",
+      "width": 2560,
+      "height": 1720,
+      "sha256": "4b2f9c4655fe82427a46ac71864f2d483b31bd8454084ef2ee57c2c777f084e9"
+    },
+    {
+      "id": "snapshot-overview",
+      "file": "snapshot-overview.png",
+      "title": "Snapshot details",
+      "description": "The actual snapshot detail page shows saved files, metadata and extraction status for example.com.",
+      "checks": [
+        "Saved snapshot link opened",
+        "Snapshot URL matches example.com",
+        "Wget output available"
+      ],
+      "capturedAt": "2026-09-20T07:13:50.940Z",
+      "route": "/archivebox/20260920/example.com/06aaf87a714b7113800008fe92ed432a/index.html",
+      "width": 2560,
+      "height": 1720,
+      "sha256": "ab1e1c802e07b7dda67000c26f3409bc238f264886bc1b55859aa30ff7da1808"
+    },
+    {
+      "id": "snapshot",
+      "file": "snapshot.png",
+      "title": "Archived page",
+      "description": "The snapshot viewer displays the HTML actually downloaded by wget from example.com.",
+      "checks": [
+        "Snapshot opened by its saved-page link",
+        "Wget HTML preview selected",
+        "Downloaded HTML renders Example Domain"
+      ],
+      "capturedAt": "2026-09-20T07:13:51.117Z",
+      "route": "/archivebox/20260920/example.com/06aaf87a714b7113800008fe92ed432a/index.html",
+      "width": 2560,
+      "height": 1720,
+      "sha256": "0e57e19b5c8ddc500aa537043c3541dea5b089e7b120642ad6035f74ca45cfc7"
+    },
+    {
+      "id": "archive-grid",
+      "file": "archive-grid.png",
+      "title": "Snapshot grid",
+      "description": "The grid toggle shows the saved pages with their real browser screenshots.",
+      "checks": [
+        "Snapshots navigation clicked",
+        "Grid view selected",
+        "Actual saved-page thumbnails displayed"
+      ],
+      "capturedAt": "2026-09-20T07:13:51.452Z",
+      "route": "/admin/core/snapshot/grid/",
+      "width": 2560,
+      "height": 1720,
+      "sha256": "7c39133549473c1f641fd071ff0b91a2441addb4e5803265fbb12f28e741352a"
+    },
+    {
+      "id": "tags",
+      "file": "tags.png",
+      "title": "Manage tags",
+      "description": "The Tags screen lists the tag assigned through the Add URLs form.",
+      "checks": [
+        "Tags link clicked",
+        "Persisted desktop-demo tag visible"
+      ],
+      "capturedAt": "2026-09-20T07:13:51.677Z",
+      "route": "/admin/core/tag/",
+      "width": 2560,
+      "height": 1720,
+      "sha256": "c01ec6a6a8a827b2d016d64699246b0212331aff680fcf8715219097fd3d6d52"
+    },
+    {
+      "id": "archive-log",
+      "file": "archive-log.png",
+      "title": "Archive results",
+      "description": "The Log screen shows the actual title and wget extraction jobs for the saved pages.",
+      "checks": [
+        "Log link clicked",
+        "Real wget extraction results present"
+      ],
+      "capturedAt": "2026-09-20T07:13:51.915Z",
+      "route": "/admin/core/archiveresult/?o=-1",
+      "width": 2560,
+      "height": 1720,
+      "sha256": "4dd884dd7fe8acd56bfc0920cea04a575fc64e1e9ffa2e5d46ada8cbc121cf06"
+    },
+    {
+      "id": "manage-users",
+      "file": "manage-users.png",
+      "title": "Manage users",
+      "description": "Django administration lists the real account created during desktop setup.",
+      "checks": [
+        "Authenticated user administration",
+        "Setup administrator appears in results"
+      ],
+      "capturedAt": "2026-09-20T07:13:52.135Z",
+      "route": "/admin/auth/user/",
+      "width": 2560,
+      "height": 1720,
+      "sha256": "64b71905c865ca36e82df4cb8a335d6c86e59092baba3b3a7c94f8e106c9319d"
+    },
+    {
+      "id": "add-user",
+      "file": "add-user.png",
+      "title": "Add a user",
+      "description": "The real user creation form is filled before saving a second local account.",
+      "checks": [
+        "Django Add user form",
+        "New username entered through form fields"
+      ],
+      "capturedAt": "2026-09-20T07:13:52.336Z",
+      "route": "/admin/auth/user/add/",
+      "width": 2560,
+      "height": 1720,
+      "sha256": "be2345690ad4c1bf8e6e58de3bad3a1f91749abb5af3753596fa8ef81b43968b"
+    },
+    {
+      "id": "edit-user",
+      "file": "edit-user.png",
+      "title": "Edit a user",
+      "description": "The newly saved reader account opens in the actual user editor.",
+      "checks": [
+        "User creation submitted",
+        "Persisted reader account in change form"
+      ],
+      "capturedAt": "2026-09-20T07:13:52.693Z",
+      "route": "/admin/auth/user/2/change/",
+      "width": 2560,
+      "height": 1720,
+      "sha256": "00aba0a3c2c8341703982de50340b5bc1b19a61bf557c3c62b2289d997e49134"
+    },
+    {
+      "id": "settings",
+      "file": "settings.png",
+      "title": "Desktop settings",
+      "description": "The shipped settings panel shows the actual local collection and service controls.",
+      "checks": [
+        "Settings opened using toolbar",
+        "Live service controls visible"
+      ],
+      "capturedAt": "2026-09-20T07:13:52.994Z",
+      "route": "/admin/auth/user/",
+      "width": 2560,
+      "height": 1720,
+      "sha256": "5c5e711c7bb89fd6d95dd22a5570fe7e634514bf9d3aa107507388c9eb846625"
+    },
+    {
+      "id": "stopped",
+      "file": "stopped.png",
+      "title": "Service stopped",
+      "description": "Stopping ArchiveBox from Settings shuts down its real Docker container.",
+      "checks": [
+        "Stop button clicked",
+        "App reports service stopped"
+      ],
+      "capturedAt": "2026-09-20T07:13:56.740Z",
+      "route": "/admin/auth/user/",
+      "width": 2560,
+      "height": 1720,
+      "sha256": "543a15b1223cb7be51ef195a58b3d1062f80022633b6d5b34a485c4a47f51a98"
+    },
+    {
+      "id": "restarted",
+      "file": "restarted.png",
+      "title": "Collection after restart",
+      "description": "Restarting the Docker service preserves both saved pages and their extracted titles.",
+      "checks": [
+        "Real service stop/start",
+        "Both saved pages survive restart"
+      ],
+      "capturedAt": "2026-09-20T07:14:00.262Z",
+      "route": "/admin/core/snapshot/",
+      "width": 2560,
+      "height": 1720,
+      "sha256": "a14ec12f5bee9994592aee656bc5a49f6f569c44674872709b6ec6f3149c0e14"
+    },
+    {
+      "id": "docker-error",
+      "file": "docker-error.png",
+      "title": "Docker unavailable",
+      "description": "Launching with a genuinely unavailable Docker endpoint displays the app’s normal recovery instructions.",
+      "checks": [
+        "Real connection failure at an unavailable local Docker socket",
+        "Shipped error and recovery UI"
+      ],
+      "capturedAt": "2026-09-20T07:14:02.444Z",
+      "route": null,
+      "width": 2560,
+      "height": 1720,
+      "sha256": "6b0b8de87cfe0034d5951e9d4a42a98d6424343f8ec2bbc8ad0d5545e865d158"
+    }
+  ]
+}
