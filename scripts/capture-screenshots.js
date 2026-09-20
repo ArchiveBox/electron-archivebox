@@ -101,7 +101,7 @@ const launch = async (dataDir, userDataDir, port, containerName, extraEnv = {}) 
     const electronApp = await electron.launch({
         chromiumSandbox: true,
         ...(process.env.ELECTRON_EXECUTABLE ? { executablePath: process.env.ELECTRON_EXECUTABLE } : {}),
-        args: [...(process.env.ELECTRON_EXECUTABLE ? [] : [path.join(ROOT_DIR, 'main.js')]), `--user-data-dir=${userDataDir}`],
+        args: [...(process.env.ELECTRON_EXECUTABLE ? [] : [ROOT_DIR]), `--user-data-dir=${userDataDir}`],
         env: {
             ...process.env,
             ARCHIVEBOX_CONTAINER_NAME: containerName,
@@ -142,6 +142,8 @@ const login = async (page, frame) => {
 const captureRealScreens = async ({ dataDir, userDataDir, port, containerName }) => {
     const { electronApp, page } = await launch(dataDir, userDataDir, port, containerName)
     let frame
+    let networkSession
+    const searchRequests = []
     try {
         await page.locator('#setup-form').waitFor()
         await capture(page, 'setup', 'First-run setup', 'The ordinary desktop app opens a fresh collection and asks for its administrator account.', ['New empty data directory', 'Visible administrator setup form'])
@@ -186,6 +188,14 @@ const captureRealScreens = async ({ dataDir, userDataDir, port, containerName })
         assert.equal(await frame.locator('#result_list tbody tr').count(), 2)
         await capture(page, 'archive', 'Saved pages', 'The collection lists two real pages saved through Add URLs, with extracted titles and tags.', ['Two real snapshot rows', 'Both extracted titles equal Example Domain', 'Tag desktop-demo visible'])
 
+        networkSession = await frame.context().newCDPSession(frame)
+        await networkSession.send('Network.enable')
+        networkSession.on('Network.responseReceived', event => {
+            const url = new URL(event.response.url)
+            if (searchRequests.length < 20 && url.pathname.startsWith('/admin/core/snapshot/') && url.searchParams.get('q') === 'example.com') {
+                searchRequests.push({ requestId: event.requestId, url: event.response.url, status: event.response.status, mimeType: event.response.mimeType })
+            }
+        })
         await frame.locator('#searchbar').fill('example.com')
         const searchResponse = frame.waitForResponse(response => {
             const url = new URL(response.url())
@@ -293,6 +303,29 @@ const captureRealScreens = async ({ dataDir, userDataDir, port, containerName })
         assert.ok(restartedContainer.HostConfig.Binds.includes(`${dataDir}:/data`), 'Restart uses the same collection directory')
         await capture(page, 'restarted', 'Collection after restart', 'Restarting the Docker service preserves both saved pages and their extracted titles.', ['Real service stop/start', 'Both saved pages survive restart'])
     } catch (error) {
+        const diagnostics = { error: error.stack, searchRequests }
+        if (frame) diagnostics.page = await frame.evaluate(() => ({
+            url: window.location.href,
+            query: document.querySelector('#searchbar')?.value,
+            mode: document.querySelector('[name="search_mode"]')?.value,
+            searchBusy: document.querySelector('#changelist-search')?.getAttribute('aria-busy'),
+            resultTables: document.querySelectorAll('#result_list').length,
+            rows: [...document.querySelectorAll('#result_list tbody tr')].slice(0, 20).map(row => ({ text: row.innerText, visible: row.getClientRects().length > 0, html: row.outerHTML.slice(0, 20000) })),
+        })).catch(failure => ({ error: failure.message }))
+        if (networkSession) {
+            for (const request of searchRequests) {
+                request.response = await networkSession.send('Network.getResponseBody', { requestId: request.requestId })
+                    .then(response => ({ ...response, originalLength: response.body.length, body: response.body.slice(0, 100000) }))
+                    .catch(failure => ({ error: failure.message }))
+            }
+        }
+        try {
+            const actual = await callDocker(docker.getContainer(containerName), 'inspect')
+            const backendImage = await callDocker(docker.getImage(actual.Image), 'inspect')
+            diagnostics.backend = { image: actual.Config.Image, imageId: actual.Image, architecture: backendImage.Architecture, created: backendImage.Created, labels: backendImage.Config.Labels, repoDigests: backendImage.RepoDigests }
+            await fs.writeFile(path.join(OUTPUT_DIR, 'backend-failure.log'), await callDocker(docker.getContainer(containerName), 'logs', { stdout: true, stderr: true, tail: 100 }))
+        } catch (failure) { diagnostics.backendError = failure.message }
+        await fs.writeFile(path.join(OUTPUT_DIR, 'failure.json'), `${JSON.stringify(diagnostics, null, 2)}\n`)
         await capture(page, 'failure', 'Capture failure', error.message, []).catch(() => {})
         console.error(await page.locator('body').innerText().catch(() => ''))
         if (frame) console.error(await frame.locator('body').innerText().catch(() => ''))
