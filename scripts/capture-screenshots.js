@@ -196,21 +196,26 @@ const captureRealScreens = async ({ dataDir, userDataDir, port, containerName })
                 searchRequests.push({ requestId: event.requestId, url: event.response.url, status: event.response.status, mimeType: event.response.mimeType })
             }
         })
+        // Deep search also searches each snapshot's saved Crawl record, which
+        // contains both submitted URLs. Select the real metadata mode to test
+        // filtering by this snapshot's URL instead of its shared crawl input.
+        await frame.getByRole('combobox', { name: 'Search mode' }).selectOption('meta')
         await frame.locator('#searchbar').fill('example.com')
         const searchResponse = frame.waitForResponse(response => {
             const url = new URL(response.url())
-            return url.pathname === '/admin/core/snapshot/search-stream/' && url.searchParams.get('q') === 'example.com'
+            return url.pathname === '/admin/core/snapshot/search-stream/' && url.searchParams.get('q') === 'example.com' && url.searchParams.get('search_mode') === 'meta'
         })
         await frame.locator('#searchbar').press('Enter')
         const completedSearch = await searchResponse
         assert.equal(completedSearch.status(), 200, 'The real streaming search request succeeds')
-        await frame.waitForURL(url => url.searchParams.get('q') === 'example.com')
+        await frame.waitForURL(url => url.searchParams.get('q') === 'example.com' && url.searchParams.get('search_mode') === 'meta')
         await frame.waitForLoadState('load')
         await frame.locator('#changelist-search:not([aria-busy="true"])').waitFor({ state: 'attached' })
         await frame.locator('#result_list tbody tr').nth(1).waitFor({ state: 'detached' })
         await frame.locator('#result_list tbody tr').filter({ hasText: 'https://example.com' }).waitFor()
         assert.equal(await frame.locator('#result_list tbody tr').count(), 1)
-        await capture(page, 'search', 'Search the archive', 'Searching for example.com filters the two-page collection to one matching snapshot.', ['Search submitted using visible form', 'One matching result'])
+        assert.equal(await frame.getByRole('combobox', { name: 'Search mode', includeHidden: true }).inputValue(), 'meta')
+        await capture(page, 'search', 'Search the archive', 'Selecting metadata search and entering example.com filters the two-page collection to the snapshot whose URL matches.', ['Metadata mode selected using visible Search mode control', 'Search submitted using visible form', 'One matching URL result'])
         await frame.locator('.field-title_str a').filter({ hasText: 'Example Domain' }).click()
         await frame.locator('.header-url').filter({ hasText: 'https://example.com' }).waitFor()
         await frame.waitForLoadState('load')
@@ -376,6 +381,9 @@ const main = async () => {
                 await page.locator('#setup-email').fill(EMAIL)
                 await page.locator('#setup-submit').click()
                 await page.locator('#service-panel[data-state="error"]').waitFor()
+                await page.keyboard.press('Escape')
+                await page.locator('#service-heading').click()
+                await page.locator('#service-panel .service-actions').scrollIntoViewIfNeeded()
                 await capture(page, 'docker-error', 'Docker unavailable', 'A real unavailable local Docker socket displays the normal Docker installation and recovery guidance.', ['Setup submitted through visible form', 'Real connection failure at an unavailable local Docker socket', 'Shipped error and recovery UI'])
             } finally {
                 await electronApp.close()
