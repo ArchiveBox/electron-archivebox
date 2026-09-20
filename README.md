@@ -1,77 +1,91 @@
-# ArchiveBox Desktop
+<div align="center">
+<img src="assets/icon.png" width="88" height="88" alt="ArchiveBox Desktop icon">
+<h1>ArchiveBox Desktop</h1>
+<p><strong>Your web archive. On your desktop.</strong><br>Save websites, browse your collection, and run ArchiveBox on Windows, Linux, and Mac.</p>
 
-A simple Electron desktop app for running ArchiveBox on **Windows, Linux, and Mac**.
-It manages a local ArchiveBox Docker container and opens the real ArchiveBox web UI.
-For the recommended native macOS and iOS experience, use [ArchiveBox.app](https://app.archivebox.io/).
+<p>
+<a href="https://github.com/ArchiveBox/electron-archivebox/releases/latest/download/ArchiveBox-Windows.exe"><img src="https://img.shields.io/badge/Download-Windows-0078D4?style=for-the-badge" alt="Download for Windows"></a>
+<a href="#downloads"><img src="https://img.shields.io/badge/Download-Linux-FCC624?style=for-the-badge&amp;logo=linux&amp;logoColor=black" alt="Download for Linux"></a>
+<a href="https://github.com/ArchiveBox/electron-archivebox/releases/latest/download/ArchiveBox-Mac.dmg"><img src="https://img.shields.io/badge/Download-macOS-333333?style=for-the-badge&amp;logo=apple&amp;logoColor=white" alt="Download for macOS"></a>
+</p>
+<p>
+<a href="LICENSE"><img src="https://img.shields.io/badge/License-GPL--3.0-blue" alt="GPL-3.0 license"></a>
+<a href="https://github.com/ArchiveBox/electron-archivebox/stargazers"><img src="https://img.shields.io/github/stars/ArchiveBox/electron-archivebox?style=flat&amp;label=Star%20on%20GitHub" alt="GitHub stars"></a>
+</p>
+<p><a href="https://electron.archivebox.io/">Website</a> &nbsp; · &nbsp; <a href="#get-started">Get started</a> &nbsp; · &nbsp; <a href="https://electron.archivebox.io/screenshots/">Screenshots</a> &nbsp; · &nbsp; <a href="https://github.com/ArchiveBox/electron-archivebox/issues">Help &amp; feedback</a></p>
+</div>
 
-[Website and setup guide](https://electron.archivebox.io/) ·
-[Real app screenshots](https://electron.archivebox.io/screenshots/) ·
-[Downloads](https://github.com/ArchiveBox/electron-archivebox/releases) ·
-[CI](https://github.com/ArchiveBox/electron-archivebox/actions/workflows/ci.yml)
+<p align="center">
+<a href="https://electron.archivebox.io/screenshots/macos/archive.png"><img src="https://electron.archivebox.io/screenshots/macos/archive.png" width="49%" alt="ArchiveBox Desktop on Mac: saved pages with titles, URLs, and tags"></a>
+<a href="https://electron.archivebox.io/screenshots/macos/activity.png"><img src="https://electron.archivebox.io/screenshots/macos/activity.png" width="49%" alt="ArchiveBox Desktop on Mac: live archiving activity and download progress"></a>
+<br><sub>Your saved pages &nbsp; · &nbsp; Live archiving progress — shown on macOS. Click either screenshot to enlarge.</sub>
+</p>
 
-## Install and use
+**[ArchiveBox](https://archivebox.io/) saves copies of websites so you can revisit them after they change or disappear.** ArchiveBox Desktop brings your collection, archiving activity, and server controls together in one app, with the files stored on your own computer.
 
-1. Install and start [Docker Desktop](https://www.docker.com/products/docker-desktop/)
-   on Windows (using Linux containers), or Docker Engine / Docker Desktop on Linux.
-2. Download the [Windows installer](https://github.com/ArchiveBox/electron-archivebox/releases/latest/download/ArchiveBox-Windows.exe),
-   [Debian/Ubuntu package](https://github.com/ArchiveBox/electron-archivebox/releases/latest/download/ArchiveBox-Linux.deb),
-   [Fedora package](https://github.com/ArchiveBox/electron-archivebox/releases/latest/download/ArchiveBox-Linux.rpm), or
-   [universal Mac DMG](https://github.com/ArchiveBox/electron-archivebox/releases/latest/download/ArchiveBox-Mac.dmg).
-   Installers are unsigned; your OS may ask you to approve them on first launch.
-3. Open ArchiveBox Desktop, choose your local administrator credentials, and start
-   your collection. The first launch downloads the ArchiveBox image.
-4. Sign in, add URLs, search your archive, open saved pages, and manage users.
-   Activity shows the live crawl monitor. Settings shows the collection location and service controls.
+- 📥 **Save the pages you care about.** Add links individually or paste a list, choose what to capture, and let ArchiveBox do the archiving.
+- 🔎 **Find it again.** Search saved pages, organize them with tags, and browse your collection as a list or grid.
+- 🗂️ **Keep more than a bookmark.** Open saved snapshots and explore their captured pages, screenshots, and other output files.
+- 📊 **Follow archiving progress.** See current downloads and jobs in Activity.
+- 🖥️ **Keep your server close.** Start, stop, restart, and update ArchiveBox from Settings. Close the window and keep it running in the tray.
+- 🌐 **Use your archive across devices.** Keep access on this computer or enable access over your local network.
 
-Your archive is stored in `~/archivebox` (your Windows user folder on Windows).
-In Settings, choose localhost-only access, all network interfaces for LAN access,
-or a specific interface address. You can also edit the port and public base URL.
-Apply & restart checks the new configuration before saving it; your collection
-stays in place. Leave the base URL blank to use the address you connect through.
-Stopping or quitting the app stops its container and preserves your files. Docker
-must remain running while using the app. The app uses the current ArchiveBox `dev`
-image for its live activity UI.
-Docker installation and updates are still managed by Docker itself.
+On a Mac, iPhone, or iPad? [ArchiveBox.app](https://app.archivebox.io/) is our recommended native Apple experience. This desktop app is also available for Mac.
 
-## Develop
+## Downloads
 
-Use Node.js 22.14+ and npm 10.9+ with a running Docker daemon:
+| Platform | Download |
+| --- | --- |
+| 🪟 Windows | [Windows installer (.exe)](https://github.com/ArchiveBox/electron-archivebox/releases/latest/download/ArchiveBox-Windows.exe) |
+| 🐧 Debian / Ubuntu | [Linux package (.deb)](https://github.com/ArchiveBox/electron-archivebox/releases/latest/download/ArchiveBox-Linux.deb) |
+| 🐧 Fedora / RHEL | [Linux package (.rpm)](https://github.com/ArchiveBox/electron-archivebox/releases/latest/download/ArchiveBox-Linux.rpm) |
+| 🍎 macOS | [Mac disk image (.dmg) — Intel & Apple Silicon](https://github.com/ArchiveBox/electron-archivebox/releases/latest/download/ArchiveBox-Mac.dmg) |
 
-```sh
-npm ci
-npm start
-```
+[All releases & release notes](https://github.com/ArchiveBox/electron-archivebox/releases). Installers are unsigned, so your operating system may ask you to approve the app on first launch.
 
-`ARCHIVEBOX_DATA_DIR`, `ARCHIVEBOX_PORT`, and `DOCKER_HOST` can select a different
-collection, local port, or Docker daemon. The default service binds only to
-`127.0.0.1:5797`, the same default port as ArchiveBox Server. On Linux your user needs access to the Docker socket.
+## Get started
 
-```sh
-npm run lint
-npm run make
-npm run capture-screenshots
-```
+1. **Install and start Docker.** Use [Docker Desktop](https://www.docker.com/products/docker-desktop/) on Windows or Mac, or Docker Desktop / Docker Engine on Linux. On Windows, use Linux containers.
+2. **Install ArchiveBox Desktop.** Download the installer for your platform above, install it, and open the app.
+3. **Create your administrator account.** Choose your username and password when prompted. The first launch downloads ArchiveBox and prepares your collection, which can take a few minutes.
+4. **Save your first link.** Sign in, choose **Add URLs**, paste a website address, and start archiving. Open **Activity** to follow its progress, then browse the saved page.
 
-Capture automation launches the ordinary app, fills forms, and clicks its real
-controls. It creates a temporary collection through first-run setup, archives a
-real URL, inspects the saved content, manages a user, and stops/restarts the
-service. There is no screenshot mode, seeded database, substituted UI, or mocked
-backend. Generated PNGs and a revision/coverage manifest stay in ignored artifacts.
+Keep Docker running while you use ArchiveBox. You need an internet connection to download ArchiveBox initially and to save new websites.
 
-Every main-branch change builds a new version (`0.7.<workflow run number>`), installs
-and exercises the installers, then publishes a GitHub release with Windows `.exe`,
-Linux `.deb` / `.rpm`, universal Mac `.dmg`, and SHA256 checksums. The download URLs
-above always resolve to the latest release. Version stamping is recorded separately
-from the source revision in screenshot manifests.
+## Save, search, and revisit
 
-CI drives the installed Linux app through the complete Docker-backed journey and
-the installed Windows and Mac apps through first-run and actual Docker-unavailable
-guidance (those GitHub runners do not provide a Linux Docker daemon). The public
-gallery labels that distinction. Every successful main run publishes the current
-site and verified captures. Download the three `archivebox-screenshots-*` artifacts
-into `artifacts/screenshots/{linux,windows,macos}` to rebuild that gallery with
-`npm run build-site`.
+Use **Add URLs** to save one page or a whole list. Add tags such as `research`, `recipes`, or `read-later`, and choose the output formats you want to keep.
 
-For headless Linux capture, use `xvfb-run -a npm run capture-screenshots`.
-To capture a packaged build, set
-`ELECTRON_EXECUTABLE` to its executable path.
+Browse your collection to find a saved page, switch between list and grid views, or search for a title, URL, or text. Open a snapshot to revisit the archived page and inspect its saved files. Use **Activity** to see what is still being archived, and **Manage Users** to manage accounts.
+
+Want to save pages directly from your browser? Connect the [ArchiveBox browser extension](https://extension.archivebox.io/) to your running server.
+
+## Your archive, on your computer
+
+Your collection lives in the `archivebox` folder inside your home folder (`~/archivebox`). **Settings → Open Archive Folder** opens it in your file manager. Back up this folder to keep another copy of your archive.
+
+- **Close the window** to keep ArchiveBox running in the tray.
+- **Stop ArchiveBox** in Settings to stop the server without deleting your collection.
+- **Quit ArchiveBox** to close the app and stop its server. Your saved files stay in place.
+- **Update ArchiveBox** in Settings to download the latest server version and restart it. Desktop app downloads are available from [Releases](https://github.com/ArchiveBox/electron-archivebox/releases).
+
+## Connect from another device
+
+By default, your server is available only on this computer, on port **5797**. To use it from another device on your local network:
+
+1. Open **Settings** and change **Listen on** to **All interfaces / LAN**.
+2. Choose **Apply & restart**.
+3. On the other device, open `http://YOUR-COMPUTER-IP:5797` in a browser and sign in. Use your computer’s local network address in place of `YOUR-COMPUTER-IP`.
+
+Keep the computer awake and Docker and ArchiveBox running. Settings also lets you change the port, select a specific interface, or set a **Base URL** if you use a fixed server address. Leave Base URL blank for automatic addressing.
+
+## Help & feedback
+
+- 📖 [ArchiveBox documentation](https://github.com/ArchiveBox/ArchiveBox/wiki) — archiving, output formats, and managing your collection.
+- 💬 [Community forum](https://zulip.archivebox.io/) — ask questions and share how you use ArchiveBox.
+- 🐛 [Report a desktop app issue](https://github.com/ArchiveBox/electron-archivebox/issues) — include your operating system, app version, and what happened.
+- 🖼️ [Explore the screenshot gallery](https://electron.archivebox.io/screenshots/) — setup, saved pages, search, settings, and more.
+
+Free and open source under the [GNU GPL v3 license](LICENSE).
+
+<p align="center"><a href="https://archivebox.io/">ArchiveBox Server</a> &nbsp; · &nbsp; <a href="https://app.archivebox.io/">Apple apps</a> &nbsp; · &nbsp; <a href="https://extension.archivebox.io/">Browser extension</a> &nbsp; · &nbsp; <a href="https://github.com/sponsors/pirate">Support the project ♡</a></p>
