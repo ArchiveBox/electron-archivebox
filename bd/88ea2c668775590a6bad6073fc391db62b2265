@@ -1,0 +1,20 @@
+.github/workflows/ci.yml
+  h_923c208e183a7b 223,225-228
+.github/workflows/pages.yml
+  h_923c208e183a7b 1-74
+scripts/build-site.js
+  h_923c208e183a7b 20-25,36,39-40,43
+scripts/restore-site-screenshots.py
+  h_923c208e183a7b 1-98
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "bd88ea2c668775590a6bad6073fc391db62b2265",
+  "prompts": {},
+  "humans": {
+    "h_923c208e183a7b": {
+      "author": "Nick Sweeting <git@sweeting.me>"
+    }
+  }
+}
