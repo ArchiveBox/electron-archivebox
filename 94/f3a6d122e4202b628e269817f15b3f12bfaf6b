@@ -1,0 +1,18 @@
+CNAME
+  h_923c208e183a7b 1
+index.html
+  h_923c208e183a7b 2,4,7,9,15,18,38
+screenshots/index.html
+  h_923c208e183a7b 2,4,7,9,11
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "94f3a6d122e4202b628e269817f15b3f12bfaf6b",
+  "prompts": {},
+  "humans": {
+    "h_923c208e183a7b": {
+      "author": "Nick Sweeting <git@sweeting.me>"
+    }
+  }
+}
