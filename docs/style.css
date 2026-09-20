@@ -15,3 +15,6 @@
 .download-cta svg { width: 18px; height: 18px; flex: none; }
 .download-cta-penguin { width: 22px; height: 22px; flex: none; }
 .download-cta > svg { margin-left: 6px; }
+
+.button.apple-cta { background: #171717; color: #fff; }
+.button.apple-cta:hover { background: #383838; color: #fff; }
