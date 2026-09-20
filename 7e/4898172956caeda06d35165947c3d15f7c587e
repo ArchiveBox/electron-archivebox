@@ -1,0 +1,24 @@
+build.json
+  h_923c208e183a7b 1-11
+index.html
+  h_923c208e183a7b 1-66
+screenshots/index.html
+  h_923c208e183a7b 1-37
+screenshots/macos/manifest.json
+  h_923c208e183a7b 1-366
+site-chrome.css
+  h_923c208e183a7b 1-75
+style.css
+  h_923c208e183a7b 1-11
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "7e4898172956caeda06d35165947c3d15f7c587e",
+  "prompts": {},
+  "humans": {
+    "h_923c208e183a7b": {
+      "author": "Nick Sweeting <git@sweeting.me>"
+    }
+  }
+}
