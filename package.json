@@ -1,13 +1,19 @@
 {
   "name": "electron-archivebox",
-  "version": "0.6.2",
+  "version": "0.7.0",
   "description": "Desktop Electron app for the ArchiveBox internet archiver",
   "main": "main.js",
   "scripts": {
     "start": "electron-forge start",
-    "smoke-test": "node scripts/smoke-test.js",
+    "lint": "eslint .",
+    "capture-screenshots": "node scripts/capture-screenshots.js",
     "package": "electron-forge package",
-    "make": "electron-forge make"
+    "make": "electron-forge make",
+    "build-site": "node scripts/build-site.js"
+  },
+  "engines": {
+    "node": ">=22.14.0",
+    "npm": ">=10.9.0"
   },
   "repository": "https://github.com/ArchiveBox/electron-archivebox",
   "keywords": [
@@ -19,42 +25,68 @@
     "web"
   ],
   "author": "Nick Sweeting",
-  "license": "AGPL v2",
+  "license": "GPL-3.0-only",
   "devDependencies": {
-    "@electron-forge/cli": "^7.11.1",
-    "@electron-forge/maker-deb": "^7.11.1",
-    "@electron-forge/maker-rpm": "^7.11.1",
-    "@electron-forge/maker-squirrel": "^7.11.1",
-    "@electron-forge/maker-zip": "^7.11.1",
-    "electron": "^41.0.2"
+    "@electron-forge/cli": "^7.11.2",
+    "@electron-forge/maker-deb": "^7.11.2",
+    "@electron-forge/maker-dmg": "^7.11.2",
+    "@electron-forge/maker-rpm": "^7.11.2",
+    "@electron-forge/maker-squirrel": "^7.11.2",
+    "electron": "^44.4.3",
+    "eslint": "^10.10.0",
+    "playwright": "^1.63.0"
   },
   "dependencies": {
-    "dockerode": "^4.0.9",
+    "dockerode": "^5.0.1",
     "electron-squirrel-startup": "^1.0.1"
   },
   "config": {
     "forge": {
-      "packagerConfig": {},
+      "packagerConfig": {
+        "asar": true,
+        "ignore": [
+          "^/artifacts($|/)",
+          "^/docs($|/)",
+          "^/_site($|/)",
+          "^/screenshots($|/)",
+          "^/scripts($|/)",
+          "^/\\.github($|/)"
+        ],
+        "icon": "assets/icon"
+      },
       "makers": [
         {
           "name": "@electron-forge/maker-squirrel",
           "config": {
-            "name": "archivebox"
+            "name": "archivebox",
+            "setupIcon": "assets/icon.ico"
           }
         },
         {
-          "name": "@electron-forge/maker-zip",
+          "name": "@electron-forge/maker-dmg",
           "platforms": [
             "darwin"
-          ]
+          ],
+          "config": {
+            "name": "ArchiveBox-Mac",
+            "icon": "assets/icon.icns"
+          }
         },
         {
           "name": "@electron-forge/maker-deb",
-          "config": {}
+          "config": {
+            "options": {
+              "icon": "assets/icon.png"
+            }
+          }
         },
         {
           "name": "@electron-forge/maker-rpm",
-          "config": {}
+          "config": {
+            "options": {
+              "icon": "assets/icon.png"
+            }
+          }
         }
       ]
     }

@@ -1,16 +1,84 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
   <head>
     <meta charset="UTF-8">
-    <!-- https://developer.mozilla.org/en-US/docs/Web/HTTP/CSP -->
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'">
-    <meta http-equiv="X-Content-Security-Policy" content="default-src 'self'; script-src 'self'">
-    <title>Opening ArchiveBox…</title>
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; connect-src 'self' http://127.0.0.1:*; frame-src http://127.0.0.1:*; img-src 'self' data:; script-src 'self'; style-src 'self'">
+    <link rel="stylesheet" href="./styles.css">
+    <title>ArchiveBox Desktop</title>
   </head>
   <body>
-    <h1>Opening ArchiveBox…</h1>
-    <p>If ArchiveBox does not open automatically, use the link below once the local service is ready.</p>
-    <p><a id="archivebox-link" href="http://127.0.0.1:8085/">Open ArchiveBox</a></p>
+    <div id="app" class="desktop-window">
+      <header class="window-titlebar">
+        <div class="window-title" aria-label="ArchiveBox Desktop">
+          <img class="brand-mark" src="./assets/icon.png" alt="">
+          <span>ArchiveBox Desktop</span>
+        </div>
+        <div class="window-controls" aria-label="Window controls">
+          <button id="minimize-window" class="window-control" aria-label="Minimize">−</button>
+          <button id="maximize-window" class="window-control" aria-label="Maximize">□</button>
+          <button id="close-window" class="window-control close-control" aria-label="Close">×</button>
+        </div>
+      </header>
+
+      <nav class="menubar" aria-label="Application menu">
+        <button class="menu-item" type="button">File</button>
+        <button class="menu-item" type="button">Archive</button>
+        <button class="menu-item" type="button">View</button>
+        <button class="menu-item" type="button">Window</button>
+        <button class="menu-item" type="button">Help</button>
+        <span class="menu-status">Local ArchiveBox</span>
+      </nav>
+
+      <nav class="app-toolbar" aria-label="ArchiveBox navigation">
+        <button class="toolbar-button" type="button" data-route="/public/">View archive</button>
+        <button class="toolbar-button" type="button" data-route="/add/">Add URLs</button>
+        <button id="activity-button" class="toolbar-button" type="button" data-route="/admin/#progress-monitor">Activity</button>
+        <button class="toolbar-button" type="button" data-route="/admin/auth/user/">Manage users</button>
+        <button id="settings-button" class="toolbar-button" type="button">Settings</button>
+        <span id="service-status" class="service-status">Connecting to local service…</span>
+      </nav>
+
+      <main class="archive-content">
+        <section id="service-panel" class="service-panel" aria-live="polite">
+          <div class="service-card">
+            <span class="eyebrow">YOUR LOCAL ARCHIVE</span>
+            <h1 id="service-heading">Opening ArchiveBox</h1>
+            <p id="service-message">Connecting to the local service…</p>
+            <form id="setup-form" hidden>
+              <p>ArchiveBox runs locally using Docker. Install and start Docker Desktop, then choose an administrator account to manage your archive.</p>
+              <label for="setup-username">Username</label>
+              <input id="setup-username" name="username" value="archivebox" autocomplete="username" required pattern="[A-Za-z0-9_.@+\-]+" maxlength="150">
+              <label for="setup-email">Email (optional)</label>
+              <input id="setup-email" name="email" type="email" autocomplete="email">
+              <label for="setup-password">Password</label>
+              <input id="setup-password" name="password" type="password" autocomplete="new-password" required minlength="8">
+              <p class="hint">Use at least eight characters. You will use this account to sign in to ArchiveBox.</p>
+              <button id="setup-submit" class="primary-button" type="submit">Create archive</button>
+            </form>
+            <div class="service-actions">
+              <button id="start-service" class="primary-button" type="button" data-action="start" hidden>Start ArchiveBox</button>
+              <button type="button" class="toolbar-button" data-action="docker-help">Get Docker Desktop ↗</button>
+            </div>
+          </div>
+        </section>
+        <section id="settings-panel" class="settings-panel" hidden>
+          <div class="settings-heading"><h1>Settings</h1><button id="close-settings" class="toolbar-button" type="button">Back to archive</button></div>
+          <p>Your archive is stored on this computer. Docker runs the ArchiveBox service in the background.</p>
+          <dl><dt>Service</dt><dd id="settings-status"></dd><dt>Archive folder</dt><dd id="settings-data"></dd><dt>Local address</dt><dd id="settings-origin"></dd><dt>Docker image</dt><dd id="settings-image"></dd></dl>
+          <div class="service-actions">
+            <button id="stop-service" class="toolbar-button" data-action="stop" type="button">Stop ArchiveBox</button>
+            <button id="restart-service" class="toolbar-button" data-action="restart" type="button">Restart ArchiveBox</button>
+            <button id="update-service" class="toolbar-button" data-action="update" type="button">Update ArchiveBox</button>
+            <button class="toolbar-button" data-action="open-data" type="button">Open archive folder</button>
+            <button class="toolbar-button" data-action="open-logs" type="button">Open logs</button>
+            <button class="toolbar-button" data-action="open-browser" type="button">Open in browser ↗</button>
+            <button id="copy-address" class="toolbar-button" data-action="copy-address" type="button">Copy server address</button>
+          </div>
+          <p class="hint">Update downloads the latest ArchiveBox image and restarts the service. Closing the window keeps ArchiveBox in the tray; Quit stops the service.</p>
+          <p id="settings-error" role="alert"></p>
+        </section>
+      </main>
+    </div>
     <script src="./renderer.js"></script>
   </body>
 </html>

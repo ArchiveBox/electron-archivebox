@@ -1,3 +1,5 @@
 node_modules
-
 out/
+artifacts/
+_site/
+screenshots/

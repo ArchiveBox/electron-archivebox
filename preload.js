@@ -1,12 +1,17 @@
-// All of the Node.js APIs are available in the preload process.
-// It has the same sandbox as a Chrome extension.
-window.addEventListener('DOMContentLoaded', () => {
-  const replaceText = (selector, text) => {
-    const element = document.getElementById(selector)
-    if (element) element.innerText = text
-  }
+const { contextBridge, ipcRenderer } = require('electron')
 
-  for (const type of ['chrome', 'node', 'electron']) {
-    replaceText(`${type}-version`, process.versions[type])
-  }
-})
+contextBridge.exposeInMainWorld('archivebox', Object.freeze({
+    setArchiveTop: top => ipcRenderer.send('archive-top', top),
+    navigate: route => ipcRenderer.send('archive-navigate', route),
+    setArchiveVisible: visible => ipcRenderer.send('archive-visible', visible),
+    getState: () => ipcRenderer.invoke('service-state'),
+    action: (action, credentials) => ipcRenderer.invoke('service-action', action, credentials),
+    onState: callback => ipcRenderer.on('service-state', (_event, state) => callback(state)),
+    onNavigate: callback => ipcRenderer.on('navigate', (_event, route) => callback(route)),
+    openMenu: label => ipcRenderer.send('menu-open', label),
+    window: Object.freeze({
+        close: () => ipcRenderer.send('window-close'),
+        maximize: () => ipcRenderer.send('window-maximize'),
+        minimize: () => ipcRenderer.send('window-minimize'),
+    }),
+}))
