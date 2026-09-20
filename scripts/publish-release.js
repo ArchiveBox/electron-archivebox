@@ -25,9 +25,11 @@ async function main() {
     await fs.writeFile(notesFile, notes)
     const gh = args => execFileSync('gh', args, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim()
     let existing
-    try { existing = JSON.parse(gh(['api', `repos/${repo}/releases/tags/${tag}`])) }
+    // The tag REST endpoint cannot find a draft whose tag is not published yet.
+    // gh release view resolves both drafts and published releases.
+    try { existing = JSON.parse(gh(['release', 'view', tag, '--repo', repo, '--json', 'apiUrl,body'])) }
     catch (error) {
-        if (!/\(HTTP 404\)/.test(error.stderr?.toString() || '')) throw error
+        if (error.stderr?.toString().trim() !== 'release not found') throw error
     }
     if (existing) {
         assert.ok(existing.body.includes(`Source: ${process.env.GITHUB_SHA}`), 'Existing release belongs to a different source revision')
@@ -35,9 +37,9 @@ async function main() {
         gh(['release', 'create', tag, '--repo', repo, '--target', process.env.GITHUB_SHA, '--title', `ArchiveBox Desktop ${version}`, '--notes-file', notesFile, '--draft'])
     }
     gh(['release', 'upload', tag, ...assets.concat('SHA256SUMS').map(file => path.join(directory, file)), '--repo', repo, '--clobber'])
-    const release = JSON.parse(gh(['api', `repos/${repo}/releases/tags/${tag}`]))
+    const release = JSON.parse(gh(['release', 'view', tag, '--repo', repo, '--json', 'apiUrl']))
     // GitHub resolves latest by date and semantic version, even when builds finish out of order.
-    gh(['api', '--method', 'PATCH', `repos/${repo}/releases/${release.id}`, '-F', 'draft=false', '-F', 'prerelease=false', '-f', 'make_latest=legacy'])
+    gh(['api', '--method', 'PATCH', release.apiUrl, '-F', 'draft=false', '-F', 'prerelease=false', '-f', 'make_latest=legacy'])
     console.log(`Published https://github.com/${repo}/releases/tag/${tag}`)
 }
 main().catch(error => { console.error(error); process.exitCode = 1 })

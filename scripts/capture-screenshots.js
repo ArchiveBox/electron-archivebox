@@ -49,8 +49,13 @@ const capture = async (page, id, title, description, checks) => {
     for (const surface of [page, frame].filter(Boolean)) {
         await surface.evaluate(() => new Promise(resolve => window.requestAnimationFrame(() => window.requestAnimationFrame(resolve))))
     }
-    const target = await electronApp.evaluate(({ BrowserWindow }) => {
+    const target = await electronApp.evaluate(async ({ BrowserWindow }) => {
         const window = BrowserWindow.getAllWindows()[0]
+        // A renderer animation frame can finish before its compositor frame is
+        // presented. Await real compositor copies, then discard them: the saved
+        // evidence below remains an unmodified native window screenshot.
+        const surfaces = [window.webContents, ...window.contentView.children.map(view => view.webContents).filter(Boolean)]
+        for (const surface of surfaces) await surface.capturePage()
         return { id: window.getMediaSourceId().split(':')[1], handle: window.getNativeWindowHandle().toString('hex'), bounds: window.getBounds() }
     })
     const filename = path.join(OUTPUT_DIR, file)
