@@ -23,9 +23,12 @@ async function main() {
     const notes = `ArchiveBox Desktop ${version}\n\nDownload the installer for your platform below. Docker must be installed and running (Linux containers on Windows). The Mac DMG includes Intel and Apple Silicon support.\n\nThese installers are not code-signed. Your operating system may require approval on first launch.\n\n[Setup guide](https://electron.archivebox.io/) · [Real app screenshots](https://electron.archivebox.io/screenshots/) · [Build and verification](https://github.com/${repo}/actions/runs/${process.env.GITHUB_RUN_ID})\n\nSource: ${process.env.GITHUB_SHA}\n`
     const notesFile = path.join(directory, 'release-notes.md')
     await fs.writeFile(notesFile, notes)
-    const gh = args => execFileSync('gh', args, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'inherit'] }).trim()
-    const releases = JSON.parse(gh(['api', '--paginate', '--slurp', `repos/${repo}/releases?per_page=100`])).flat()
-    const existing = releases.find(release => release.tag_name === tag)
+    const gh = args => execFileSync('gh', args, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim()
+    let existing
+    try { existing = JSON.parse(gh(['api', `repos/${repo}/releases/tags/${tag}`])) }
+    catch (error) {
+        if (!/\(HTTP 404\)/.test(error.stderr?.toString() || '')) throw error
+    }
     if (existing) {
         assert.ok(existing.body.includes(`Source: ${process.env.GITHUB_SHA}`), 'Existing release belongs to a different source revision')
     } else {
@@ -34,7 +37,7 @@ async function main() {
     gh(['release', 'upload', tag, ...assets.concat('SHA256SUMS').map(file => path.join(directory, file)), '--repo', repo, '--clobber'])
     const release = JSON.parse(gh(['api', `repos/${repo}/releases/tags/${tag}`]))
     // GitHub resolves latest by date and semantic version, even when builds finish out of order.
-    gh(['api', '--method', 'PATCH', `repos/${repo}/releases/${release.id}`, '-F', 'draft=false', '-f', 'make_latest=legacy'])
+    gh(['api', '--method', 'PATCH', `repos/${repo}/releases/${release.id}`, '-F', 'draft=false', '-F', 'prerelease=false', '-f', 'make_latest=legacy'])
     console.log(`Published https://github.com/${repo}/releases/tag/${tag}`)
 }
 main().catch(error => { console.error(error); process.exitCode = 1 })

@@ -18,7 +18,7 @@ const releaseVersion = () => {
 function sourceProvenance() {
     const changes = git('diff', 'HEAD', '--name-only').split('\n').filter(Boolean)
     if (!changes.length) return { dirty: false, versionStamp: null }
-    if (process.env.GITHUB_REF !== 'refs/heads/main' || !process.env.GITHUB_RUN_NUMBER || changes.some(file => !['package.json', 'package-lock.json'].includes(file))) return { dirty: true, versionStamp: null }
+    if (process.env.GITHUB_REF !== 'refs/heads/main' || !process.env.GITHUB_RUN_NUMBER || changes.length !== 2 || changes.some(file => !['package.json', 'package-lock.json'].includes(file))) return { dirty: true, versionStamp: null }
     const version = releaseVersion()
     for (const file of changes) {
         const original = JSON.parse(git('show', `HEAD:${file}`))
