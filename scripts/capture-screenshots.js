@@ -27,9 +27,11 @@ const callDocker = (object, method, ...args) => new Promise((resolve, reject) =>
     object[method](...args, (error, result) => error ? reject(error) : resolve(result))
 })
 const contentPage = async (electronApp, shellPage, port) => {
-    const page = electronApp.context().pages().find(candidate => candidate !== shellPage && ['127.0.0.1', 'localhost'].some(host => candidate.url().startsWith(`http://${host}:${port}/`)))
-    assert.ok(page, 'The real ArchiveBox WebContentsView is available to automation')
+    const context = electronApp.context()
+    const page = context.pages().find(candidate => candidate !== shellPage)
+        || await context.waitForEvent('page', { predicate: candidate => candidate !== shellPage })
     page.setDefaultTimeout(30000)
+    await page.waitForURL(url => url.protocol === 'http:' && ['127.0.0.1', 'localhost'].includes(url.hostname) && url.port === String(port))
     return page
 }
 const waitForRunning = async page => {
@@ -184,9 +186,16 @@ const captureRealScreens = async ({ dataDir, userDataDir, port, containerName })
         await capture(page, 'archive', 'Saved pages', 'The collection lists two real pages saved through Add URLs, with extracted titles and tags.', ['Two real snapshot rows', 'Both extracted titles equal Example Domain', 'Tag desktop-demo visible'])
 
         await frame.locator('#searchbar').fill('example.com')
+        const searchResponse = frame.waitForResponse(response => {
+            const url = new URL(response.url())
+            return url.pathname === '/admin/core/snapshot/search-stream/' && url.searchParams.get('q') === 'example.com'
+        })
         await frame.locator('#searchbar').press('Enter')
+        const completedSearch = await searchResponse
+        assert.equal(completedSearch.status(), 200, 'The real streaming search request succeeds')
         await frame.waitForURL(url => url.searchParams.get('q') === 'example.com')
         await frame.waitForLoadState('load')
+        await frame.locator('#changelist-search:not([aria-busy="true"])').waitFor({ state: 'attached' })
         await frame.locator('#result_list tbody tr').nth(1).waitFor({ state: 'detached' })
         await frame.locator('#result_list tbody tr').filter({ hasText: 'https://example.com' }).waitFor()
         assert.equal(await frame.locator('#result_list tbody tr').count(), 1)
@@ -240,6 +249,7 @@ const captureRealScreens = async ({ dataDir, userDataDir, port, containerName })
 
         await page.locator('#settings-button').click()
         await page.locator('#settings-panel').waitFor()
+        await page.locator('#settings-panel .service-actions').scrollIntoViewIfNeeded()
         await capture(page, 'settings', 'Desktop settings', 'The shipped settings panel shows the actual local collection and service controls.', ['Settings opened using toolbar', 'Live service controls visible'])
         const configureNetwork = async configuration => {
             await page.locator('#network-scope').selectOption(configuration.scope)
