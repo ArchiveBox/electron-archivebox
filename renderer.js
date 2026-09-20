@@ -13,7 +13,6 @@ const setArchiveRoute = value => {
     if (state?.phase === 'running') {
         window.archivebox.navigate(route)
     }
-    document.querySelectorAll('[data-route]').forEach(button => button.classList.toggle('is-active', button.dataset.route === route))
     renderState(state)
 }
 const renderState = next => {
@@ -32,7 +31,12 @@ const renderState = next => {
     element('setup-form').hidden = !state.setupNeeded || busy
     element('start-service').hidden = !['error', 'stopped'].includes(state.phase) || state.setupNeeded
     element('start-service').textContent = state.phase === 'error' ? 'Try again' : 'Start ArchiveBox'
-    document.querySelectorAll('[data-route]').forEach(button => { button.disabled = !running })
+    document.querySelectorAll('[data-route]').forEach(button => {
+        button.disabled = !running
+        button.classList.toggle('is-active', running && !settingsOpen && button.dataset.route === route)
+    })
+    element('settings-button').classList.toggle('is-active', settingsOpen)
+    element('settings-button').setAttribute('aria-pressed', String(settingsOpen))
     document.querySelectorAll('[data-action]').forEach(button => {
         button.disabled = busy && !['docker-help', 'open-data'].includes(button.dataset.action)
     })
