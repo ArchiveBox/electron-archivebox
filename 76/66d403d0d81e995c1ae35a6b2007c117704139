@@ -1,0 +1,16 @@
+main.js
+  h_923c208e183a7b 427-429,431-442
+scripts/capture-screenshots.js
+  h_923c208e183a7b 102
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "7666d403d0d81e995c1ae35a6b2007c117704139",
+  "prompts": {},
+  "humans": {
+    "h_923c208e183a7b": {
+      "author": "Nick Sweeting <git@sweeting.me>"
+    }
+  }
+}
