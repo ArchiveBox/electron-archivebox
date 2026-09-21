@@ -43,7 +43,7 @@ async function main() {
         if (expectedRunId && (String(captureManifest.workflowRun?.id) !== expectedRunId || captureManifest.workflowRun?.url !== `${repo}/actions/runs/${expectedRunId}`)) throw new Error(`Capture belongs to a different CI run: ${platform}`)
         const ids = new Set()
         for (const capture of captureManifest.screenshots) {
-            if (!/^[a-z0-9-]+$/.test(capture.id) || ids.has(capture.id) || !capture.title || !/^[a-zA-Z0-9_-]+\.png$/.test(capture.file)) throw new Error('Invalid screenshot entry')
+            if (!/^[a-z][a-z0-9-]*$/.test(capture.id) || ids.has(capture.id) || !capture.title || capture.file !== `${capture.id}.png`) throw new Error('Invalid screenshot entry')
             ids.add(capture.id)
             const image = await fs.readFile(path.join(input, platform, capture.file))
             if (image.length < 24 || image.subarray(0, 8).toString('hex') !== '89504e470d0a1a0a' || image.readUInt32BE(16) !== capture.width || image.readUInt32BE(20) !== capture.height || capture.width < 1 || capture.height < 1 || createHash('sha256').update(image).digest('hex') !== capture.sha256) throw new Error(`Screenshot dimensions or digest mismatch: ${platform}/${capture.file}`)
