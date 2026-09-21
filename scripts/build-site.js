@@ -107,6 +107,7 @@ async function main() {
         await fs.writeFile(path.join(target, 'index.html'), localized)
     }
     const sitemapRoutes = ['', ...languages.map(language => `${language}/`), 'screenshots/']
+    await fs.writeFile(path.join(output, 'robots.txt'), 'User-agent: *\nAllow: /\n\nSitemap: https://electron.archivebox.io/sitemap.xml\n')
     await fs.writeFile(path.join(output, 'sitemap.xml'), `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${sitemapRoutes.map(route => `<url><loc>${canonical}${route}</loc></url>`).join('')}</urlset>\n`)
     console.log(`Built ${output}: ${screenshots.length} real screenshots`)
 }
