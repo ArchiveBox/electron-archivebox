@@ -86,6 +86,28 @@ async function main() {
     await fs.writeFile(path.join(output, 'CNAME'), new URL(canonical).hostname + '\n')
     await fs.writeFile(path.join(output, 'build.json'), JSON.stringify({ revision, generatedAt: new Date().toISOString(), captures: manifests.map(({ platform, commit }) => ({ platform, commit })), screenshots: screenshots.length }, null, 2) + '\n')
     execFileSync('uv', ['run', '--no-project', 'python', path.join(root, '.github/pages/site.py'), 'render', output, '--baseurl', base], { cwd: root, stdio: 'inherit' });
+    const languages = []
+    for (const language of ['es', 'fr', 'zh', 'ru', 'ar']) {
+        try { if ((await fs.stat(path.join(root, 'docs', language, 'index.html'))).isFile()) languages.push(language) } catch {}
+    }
+    const alternates = ['en', ...languages].map(language => `<link rel="alternate" hreflang="${language}" href="${canonical}${language === 'en' ? '' : `${language}/`}">`).join('') + `<link rel="alternate" hreflang="x-default" href="${canonical}">`
+    if (languages.length) {
+        const rootIndex = path.join(output, 'index.html')
+        const localizedRoot = (await fs.readFile(rootIndex, 'utf8')).replace('</head>', `${alternates}</head>`).replace('</body>', `<script src="${base}language.js" defer></script></body>`)
+        await fs.writeFile(rootIndex, localizedRoot)
+        await fs.copyFile(path.join(root, 'docs', 'language.js'), path.join(output, 'language.js'))
+    }
+    for (const language of languages) {
+        const target = path.join(output, language)
+        await fs.mkdir(target, { recursive: true })
+        const localized = (await fs.readFile(path.join(root, 'docs', language, 'index.html'), 'utf8'))
+            .replace('</head>', `${alternates}</head>`)
+            .replace('</body>', `<script src="__BASE__language.js" defer></script></body>`)
+            .replaceAll('__BASE__', base)
+        await fs.writeFile(path.join(target, 'index.html'), localized)
+    }
+    const sitemapRoutes = ['', ...languages.map(language => `${language}/`), 'screenshots/']
+    await fs.writeFile(path.join(output, 'sitemap.xml'), `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${sitemapRoutes.map(route => `<url><loc>${canonical}${route}</loc></url>`).join('')}</urlset>\n`)
     console.log(`Built ${output}: ${screenshots.length} real screenshots`)
 }
 main().catch(error => { console.error(error); process.exitCode = 1 })
