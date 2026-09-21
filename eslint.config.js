@@ -14,6 +14,10 @@ const nodeGlobals = {
 
 const browserGlobals = {
     URLSearchParams: 'readonly',
+    location: 'readonly',
+    localStorage: 'readonly',
+    navigator: 'readonly',
+    innerWidth: 'readonly',
     document: 'readonly',
     window: 'readonly',
 }
