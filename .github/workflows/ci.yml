@@ -11,6 +11,11 @@ on:
       - 'README.md'
   pull_request:
   workflow_dispatch:
+    inputs:
+      archivebox_version:
+        description: Released ArchiveBox server version to test (for example 0.9.50)
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -26,11 +31,18 @@ jobs:
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: npm
       - run: npm ci
+      - name: Validate released server version
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          ARCHIVEBOX_VERSION: ${{ inputs.archivebox_version }}
+        run: node -e 'if (!/^\d+\.\d+\.\d+(?:rc\d+)?$/.test(process.env.ARCHIVEBOX_VERSION)) process.exit(1)'
       - name: Set the release version for this main run
         run: node scripts/release-version.js
       - run: npm run lint
@@ -48,6 +60,7 @@ jobs:
         env:
           ELECTRON_EXECUTABLE: /usr/bin/electron-archivebox
           SCREENSHOT_DIR: artifacts/screenshots/linux
+          EXPECTED_ARCHIVEBOX_VERSION: ${{ github.event_name == 'workflow_dispatch' && inputs.archivebox_version || '' }}
         run: |
           mkdir -p artifacts
           xvfb-run -a --server-args="-screen 0 1600x1000x24" npm run capture-screenshots 2>&1 | tee artifacts/capture.log
@@ -82,6 +95,8 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v5
         with:
           node-version: 22
@@ -142,6 +157,8 @@ jobs:
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v5
         with:
           node-version: 22
@@ -209,6 +226,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v5
         with:
           node-version: 22
@@ -236,7 +255,7 @@ jobs:
 
   release:
     name: Publish verified desktop installers
-    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     needs: [linux, windows, macos, site]
     runs-on: ubuntu-latest
     permissions:

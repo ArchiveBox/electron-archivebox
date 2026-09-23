@@ -160,6 +160,13 @@ const captureRealScreens = async ({ dataDir, userDataDir, port, containerName })
         await page.locator('#setup-form').waitFor({ state: 'hidden' })
         await capture(page, 'startup', 'Starting ArchiveBox', 'The app connects to Docker and initializes the collection after submitting the setup form.', ['Setup submitted through the visible form', 'Real service startup panel'])
         await waitForRunning(page)
+        const versionResponse = await fetch(`http://127.0.0.1:${port}/api/v1/openapi.json`)
+        assert.equal(versionResponse.status, 200, 'Running ArchiveBox exposes its real OpenAPI document')
+        const backendVersion = (await versionResponse.json()).info?.version
+        assert.match(backendVersion, /^\d+\.\d+\.\d+(?:rc\d+)?$/, 'Running ArchiveBox reports a release version')
+        if (process.env.EXPECTED_ARCHIVEBOX_VERSION) {
+            assert.equal(backendVersion, process.env.EXPECTED_ARCHIVEBOX_VERSION, 'Captured Docker server matches the released ArchiveBox version')
+        }
         frame = await contentPage(electronApp, page, port)
         await frame.locator('#table-bookmarks').waitFor()
         assert.equal(await frame.locator('#table-bookmarks .snapshot-row').count(), 0)
@@ -313,6 +320,7 @@ const captureRealScreens = async ({ dataDir, userDataDir, port, containerName })
         assert.equal(restartedContainer.State.Running, true)
         assert.ok(restartedContainer.HostConfig.Binds.includes(`${dataDir}:/data`), 'Restart uses the same collection directory')
         await capture(page, 'restarted', 'Collection after restart', 'Restarting the Docker service preserves both saved pages and their extracted titles.', ['Real service stop/start', 'Both saved pages survive restart'])
+        return backendVersion
     } catch (error) {
         const diagnostics = { error: error.stack, searchRequests }
         if (frame) diagnostics.page = await frame.evaluate(() => ({
@@ -376,6 +384,7 @@ const main = async () => {
     await fs.chmod(dataDir, 0o777)
     await fs.rm(OUTPUT_DIR, { force: true, recursive: true })
     await fs.mkdir(OUTPUT_DIR, { recursive: true })
+    let backendVersion = null
     try {
         if (STARTUP_ONLY) {
             const { electronApp, page } = await launch(dataDir, userDataDir, port, containerName, { DOCKER_HOST: unavailableDockerHost(), DOCKER_CONTEXT: '' })
@@ -396,7 +405,7 @@ const main = async () => {
             }
         } else {
             await callDocker(docker, 'ping')
-            await captureRealScreens({ containerName, dataDir, userDataDir, port })
+            backendVersion = await captureRealScreens({ containerName, dataDir, userDataDir, port })
             await captureDockerError({ containerName, dataDir, userDataDir, port })
         }
         const dockerImage = STARTUP_ONLY ? null : await callDocker(docker.getImage(IMAGE), 'inspect')
@@ -418,6 +427,7 @@ const main = async () => {
             playwrightVersion: require('playwright/package.json').version,
             platform: `${process.platform}-${process.arch}`,
             dockerImage: dockerImage ? { reference: IMAGE, id: dockerImage.Id, repoDigests: dockerImage.RepoDigests } : null,
+            backendVersion: STARTUP_ONLY ? null : backendVersion,
             requiredScreenshots: REQUIRED_SCREENS,
             screenshots,
         }

@@ -8,6 +8,14 @@ const git = (...args) => execFileSync('git', args, { cwd: root, encoding: 'utf8'
 const releaseVersion = () => {
     const { version: base, releaseRunBase = 0 } = JSON.parse(git('show', 'HEAD:package.json'))
     if (process.env.GITHUB_REF !== 'refs/heads/main') return base
+    if (process.env.GITHUB_EVENT_NAME === 'workflow_dispatch') {
+        const tags = git('tag', '--merged', 'HEAD', '--list', 'v*').split('\n').filter(tag => /^v\d+\.\d+\.\d+$/.test(tag))
+        const tag = tags.sort((a, b) => b.slice(1).localeCompare(a.slice(1), undefined, { numeric: true }))[0]
+        assert.ok(tag, 'Server compatibility captures require an existing desktop app release')
+        const marketingFile = file => file === 'README.md' || file === '.github/workflows/pages.yml' || file.startsWith('docs/') || file.startsWith('.github/pages/')
+        assert.ok(git('diff', '--name-only', tag, 'HEAD').split('\n').filter(Boolean).every(marketingFile), 'Unreleased desktop app changes require the normal push release before server compatibility capture')
+        return tag.slice(1)
+    }
     assert.match(process.env.GITHUB_RUN_NUMBER || '', /^[1-9]\d*$/)
     // Start this version series at its base instead of adding all prior CI runs.
     const increment = Number(process.env.GITHUB_RUN_NUMBER) - releaseRunBase
@@ -21,7 +29,7 @@ const releaseVersion = () => {
 function sourceProvenance() {
     const changes = git('diff', 'HEAD', '--name-only').split('\n').filter(Boolean)
     if (!changes.length) return { dirty: false, versionStamp: null }
-    if (process.env.GITHUB_REF !== 'refs/heads/main' || !process.env.GITHUB_RUN_NUMBER || changes.length !== 2 || changes.some(file => !['package.json', 'package-lock.json'].includes(file))) return { dirty: true, versionStamp: null }
+    if (process.env.GITHUB_REF !== 'refs/heads/main' || changes.length !== 2 || changes.some(file => !['package.json', 'package-lock.json'].includes(file))) return { dirty: true, versionStamp: null }
     const version = releaseVersion()
     for (const file of changes) {
         const original = JSON.parse(git('show', `HEAD:${file}`))
