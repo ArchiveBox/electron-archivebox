@@ -21,7 +21,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: electron-archivebox-${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.ref || github.run_id }}
+  group: electron-archivebox-${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.ref || 'main-release' }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
