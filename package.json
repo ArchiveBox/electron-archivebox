@@ -58,8 +58,7 @@
         {
           "name": "@electron-forge/maker-squirrel",
           "config": {
-            "name": "archivebox",
-            "setupIcon": "assets/icon.ico"
+            "name": "archivebox"
           }
         },
         {

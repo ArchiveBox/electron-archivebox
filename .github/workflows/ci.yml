@@ -111,7 +111,9 @@ jobs:
         run: |
           $installer = Get-ChildItem out/make -Recurse -Filter '*Setup.exe' | Select-Object -First 1
           if (-not $installer) { throw 'Windows installer is missing' }
-          $process = Start-Process -FilePath $installer.FullName -ArgumentList '--silent' -Wait -PassThru
+          # Exercise the visible Squirrel installer; --silent skips its loading window.
+          $process = Start-Process -FilePath $installer.FullName -PassThru
+          if (-not $process.WaitForExit(120000)) { throw 'Windows installer did not exit within two minutes' }
           if ($process.ExitCode -ne 0) { throw "Installer exited with $($process.ExitCode)" }
           $version = (Get-Content package.json | ConvertFrom-Json).version
           $executable = Join-Path $env:LOCALAPPDATA "archivebox/app-$version/electron-archivebox.exe"
