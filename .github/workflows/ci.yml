@@ -60,6 +60,7 @@ jobs:
         env:
           ELECTRON_EXECUTABLE: /usr/bin/electron-archivebox
           SCREENSHOT_DIR: artifacts/screenshots/linux
+          ARCHIVEBOX_IMAGE: ${{ github.event_name == 'workflow_dispatch' && format('archivebox/archivebox:{0}', inputs.archivebox_version) || '' }}
           EXPECTED_ARCHIVEBOX_VERSION: ${{ github.event_name == 'workflow_dispatch' && inputs.archivebox_version || '' }}
         run: |
           mkdir -p artifacts

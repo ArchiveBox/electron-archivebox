@@ -9,7 +9,7 @@ const { createDockerClient } = require('../docker-client')
 
 const ROOT_DIR = path.resolve(__dirname, '..')
 const OUTPUT_DIR = path.resolve(process.env.SCREENSHOT_DIR || path.join(ROOT_DIR, 'artifacts', 'screenshots'))
-const IMAGE = 'archivebox/archivebox:dev'
+const IMAGE = process.env.ARCHIVEBOX_IMAGE || 'archivebox/archivebox:dev'
 const STARTUP_ONLY = process.argv.includes('--startup-only')
 const CAPTURE_LAN = process.platform === 'linux' && process.env.GITHUB_ACTIONS === 'true'
 const USERNAME = 'archivebox'
