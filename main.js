@@ -414,7 +414,8 @@ for (const action of ['close', 'maximize', 'minimize']) {
 }
 
 const bootstrap = async () => {
-    if (require('electron-squirrel-startup') || !app.requestSingleInstanceLock()) { app.quit(); return }
+    if (require('electron-squirrel-startup')) return
+    if (!app.requestSingleInstanceLock()) { app.quit(); return }
     if (process.platform === 'win32') app.setAppUserModelId('com.archivebox.desktop')
     app.on('second-instance', () => void openWindow())
     app.on('activate', () => void openWindow())
