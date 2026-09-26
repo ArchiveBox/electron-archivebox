@@ -269,7 +269,7 @@ const startDocker = async (credentials, update = false) => {
         docker = docker || createDockerClient({ timeout: 100000 })
         await callDocker(docker, 'ping')
         await fs.mkdir(DATA_DIR, { recursive: true })
-        if (update) await pullImage()
+        if (update || setupNeeded) await pullImage()
         else {
             try { await callDocker(docker.getImage(IMAGE), 'inspect') } catch (error) {
                 if (error.statusCode !== 404) throw error
