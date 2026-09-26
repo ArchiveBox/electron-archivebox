@@ -125,6 +125,31 @@ jobs:
           New-Item -ItemType Directory -Force artifacts | Out-Null
           npm run capture-screenshots -- --startup-only 2>&1 | Tee-Object artifacts/capture.log
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Collect failed Windows installer diagnostics
+        if: failure()
+        run: |
+          $destination = 'artifacts/windows-installer'
+          New-Item -ItemType Directory -Force $destination | Out-Null
+          $source = Join-Path $env:LOCALAPPDATA 'SquirrelTemp'
+          foreach ($name in @('Squirrel-Install.log', 'SquirrelSetup.log')) {
+            $log = Join-Path $source $name
+            if (Test-Path $log) {
+              Copy-Item $log $destination
+              Write-Host "===== $name ====="
+              Get-Content $log
+            } else {
+              Write-Host "Missing installer log: $log"
+            }
+          }
+          Get-ChildItem $source -ErrorAction SilentlyContinue |
+            Select-Object Name, Length, LastWriteTime |
+            Format-Table -AutoSize |
+            Out-File (Join-Path $destination 'SquirrelTemp-files.txt')
+          Get-WinEvent -FilterHashtable @{ LogName = 'Application'; StartTime = (Get-Date).AddMinutes(-20) } -ErrorAction SilentlyContinue |
+            Where-Object { $_.ProviderName -in @('Application Error', '.NET Runtime', 'Windows Error Reporting') } |
+            Select-Object -First 20 TimeCreated, ProviderName, Id, Message |
+            Format-List |
+            Out-File (Join-Path $destination 'Windows-application-errors.txt')
       - name: Preserve failed capture diagnostics
         if: failure()
         uses: actions/upload-artifact@v4

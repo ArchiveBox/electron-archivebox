@@ -81,6 +81,7 @@ Keep the computer awake and Docker and ArchiveBox running. Settings also lets yo
 
 ## Help & feedback
 
+- **Windows installer failed?** Press `Win + R`, paste `%LOCALAPPDATA%\SquirrelTemp`, and open `Squirrel-Install.log`. Squirrel can write the actual install error there even when its **Open Setup Log** button opens an empty `SquirrelSetup.log`. If both files are empty or missing, open **Event Viewer → Windows Logs → Application** and look for an **Application Error** or **.NET Runtime** entry at the time of the failed install. Include the error text, your Windows version and whether it is 32-bit or 64-bit when [reporting the issue](https://github.com/ArchiveBox/electron-archivebox/issues). Review logs for personal paths before sharing them.
 - 📖 [ArchiveBox documentation](https://github.com/ArchiveBox/ArchiveBox/wiki) — archiving, output formats, and managing your collection.
 - 💬 [Community forum](https://zulip.archivebox.io/) — ask questions and share how you use ArchiveBox.
 - 🐛 [Report a desktop app issue](https://github.com/ArchiveBox/electron-archivebox/issues) — include your operating system, app version, and what happened.
