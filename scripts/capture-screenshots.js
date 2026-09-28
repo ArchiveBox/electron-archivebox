@@ -242,8 +242,12 @@ const captureRealScreens = async ({ dataDir, userDataDir, port, containerName })
         await wgetPreview.click()
         if (await frame.locator('.header-bottom').isVisible()) await frame.locator('.header-toggle').click()
         await frame.locator('.header-bottom').waitFor({ state: 'hidden' })
-        await frame.frameLocator('iframe[name="preview"]').getByRole('heading', { name: 'Example Domain', exact: true }).waitFor({ timeout: 180000 })
-        await capture(page, 'snapshot', 'Archived page', 'The snapshot viewer displays the HTML actually downloaded by wget from example.com.', ['Snapshot opened by its saved-page link', 'Wget HTML preview selected', 'Downloaded HTML renders Example Domain'])
+        const archivedPage = frame.frameLocator('iframe[name="preview"]')
+        // Verify the archived document semantics and its current visible content,
+        // not heading markup that the live example.com page does not provide.
+        assert.equal(await archivedPage.locator('title').textContent(), 'Example Domain')
+        await archivedPage.getByText('This domain is for use in documentation examples', { exact: false }).waitFor({ state: 'visible', timeout: 180000 })
+        await capture(page, 'snapshot', 'Archived page', 'The snapshot viewer displays the HTML actually downloaded by wget from example.com.', ['Snapshot opened by its saved-page link', 'Wget HTML preview selected', 'Archived document has expected title and visible content'])
 
         await page.locator('[data-route="/public/"]').click()
         await frame.getByRole('link', { name: 'Snapshots', exact: true }).click()
