@@ -8,7 +8,7 @@ const git = (...args) => execFileSync('git', args, { cwd: root, encoding: 'utf8'
 const releaseVersion = () => {
     const { version: base, releaseRunBase = 0 } = JSON.parse(git('show', 'HEAD:package.json'))
     if (process.env.GITHUB_REF !== 'refs/heads/main') return base
-    if (process.env.GITHUB_EVENT_NAME === 'workflow_dispatch') {
+    if (['workflow_dispatch', 'schedule'].includes(process.env.GITHUB_EVENT_NAME)) {
         const tags = git('tag', '--merged', 'HEAD', '--list', 'v*').split('\n').filter(tag => /^v\d+\.\d+\.\d+$/.test(tag))
         const tag = tags.sort((a, b) => b.slice(1).localeCompare(a.slice(1), undefined, { numeric: true }))[0]
         assert.ok(tag, 'Server compatibility captures require an existing desktop app release')

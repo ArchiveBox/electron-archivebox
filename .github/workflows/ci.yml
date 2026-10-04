@@ -1,6 +1,8 @@
 name: CI
 
 on:
+  schedule:
+    - cron: '19 6,18 * * *'
   push:
     branches: [main]
     # Marketing-only updates publish independently through pages.yml.
@@ -12,21 +14,41 @@ on:
   pull_request:
   workflow_dispatch:
     inputs:
+      capture_gallery:
+        description: Refresh the gallery if source or backend inputs changed
+        type: boolean
+        default: false
       archivebox_version:
         description: Released ArchiveBox server version to test (for example 0.9.50)
-        required: true
+        required: false
         type: string
 
 permissions:
   contents: read
+  actions: read
 
 concurrency:
   group: electron-archivebox-${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.ref || 'main-release' }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  changes:
+    runs-on: ubuntu-24.04
+    outputs:
+      changed: ${{ steps.check.outputs.changed }}
+      key: ${{ steps.check.outputs.key }}
+      backend: ${{ steps.check.outputs.backend }}
+    steps:
+      - id: check
+        if: github.event_name == 'schedule' || inputs.capture_gallery
+        uses: ArchiveBox/monorepo/.github/actions/changed-scheduled-inputs@main
+        with:
+          backend: ${{ inputs.archivebox_version && format('release:{0}', inputs.archivebox_version) || 'latest-release' }}
+
   linux:
-    name: Linux package and real app screenshots
+    needs: changes
+    if: ${{ (github.event_name != 'schedule' && !inputs.capture_gallery) || needs.changes.outputs.changed == 'true' }}
+    name: Linux package
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
@@ -39,13 +61,15 @@ jobs:
           cache: npm
       - run: npm ci
       - name: Validate released server version
-        if: github.event_name == 'workflow_dispatch'
+        if: inputs.archivebox_version != ''
         env:
           ARCHIVEBOX_VERSION: ${{ inputs.archivebox_version }}
         run: node -e 'if (!/^\d+\.\d+\.\d+(?:rc\d+)?$/.test(process.env.ARCHIVEBOX_VERSION)) process.exit(1)'
       - name: Set the release version for this main run
         run: node scripts/release-version.js
       - run: npm run lint
+      - name: Verify scheduled capture release identity
+        run: node scripts/test-release-version.js
       - run: npm audit --omit=dev
       - name: Install Linux packaging tools
         run: sudo apt-get update && sudo apt-get install -y rpm imagemagick xdotool
@@ -56,12 +80,13 @@ jobs:
       - name: Verify Docker daemon
         run: docker info
       - name: Exercise the packaged app through real user actions
+        if: needs.changes.outputs.changed == 'true'
         shell: bash
         env:
           ELECTRON_EXECUTABLE: /usr/bin/electron-archivebox
           SCREENSHOT_DIR: artifacts/screenshots/linux
-          ARCHIVEBOX_IMAGE: ${{ github.event_name == 'workflow_dispatch' && format('archivebox/archivebox:{0}', inputs.archivebox_version) || '' }}
-          EXPECTED_ARCHIVEBOX_VERSION: ${{ github.event_name == 'workflow_dispatch' && inputs.archivebox_version || '' }}
+          ARCHIVEBOX_IMAGE: ${{ format('archivebox/archivebox:{0}', needs.changes.outputs.backend) }}
+          EXPECTED_ARCHIVEBOX_VERSION: ${{ needs.changes.outputs.backend }}
         run: |
           mkdir -p artifacts
           xvfb-run -a --server-args="-screen 0 1600x1000x24" npm run capture-screenshots 2>&1 | tee artifacts/capture.log
@@ -83,6 +108,7 @@ jobs:
           path: artifacts/releases/
           if-no-files-found: error
       - name: Upload verified Linux screenshots
+        if: needs.changes.outputs.changed == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: archivebox-screenshots-linux
@@ -91,7 +117,9 @@ jobs:
           retention-days: 90
 
   windows:
-    name: Windows package and first-run screenshots
+    needs: changes
+    if: ${{ (github.event_name != 'schedule' && !inputs.capture_gallery) || needs.changes.outputs.changed == 'true' }}
+    name: Windows package
     runs-on: windows-latest
     timeout-minutes: 15
     steps:
@@ -122,6 +150,7 @@ jobs:
           Get-Process -Name electron-archivebox -ErrorAction SilentlyContinue | Stop-Process
           "ELECTRON_EXECUTABLE=$executable" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
       - name: Exercise packaged Windows setup and Docker guidance
+        if: needs.changes.outputs.changed == 'true'
         env:
           SCREENSHOT_DIR: artifacts/screenshots/windows
         run: |
@@ -172,6 +201,7 @@ jobs:
           path: artifacts/releases/
           if-no-files-found: error
       - name: Upload verified Windows screenshots
+        if: needs.changes.outputs.changed == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: archivebox-screenshots-windows
@@ -180,7 +210,9 @@ jobs:
           retention-days: 90
 
   macos:
-    name: Mac universal DMG and installed-app screenshots
+    needs: changes
+    if: ${{ (github.event_name != 'schedule' && !inputs.capture_gallery) || needs.changes.outputs.changed == 'true' }}
+    name: Mac universal DMG
     runs-on: macos-15
     timeout-minutes: 25
     steps:
@@ -216,6 +248,7 @@ jobs:
           lipo "$destination/Contents/MacOS/$binary" -verify_arch x86_64
           echo "ELECTRON_EXECUTABLE=$destination/Contents/MacOS/$binary" >> "$GITHUB_ENV"
       - name: Exercise installed Mac setup and Docker guidance
+        if: needs.changes.outputs.changed == 'true'
         env:
           SCREENSHOT_DIR: artifacts/screenshots/macos
         run: |
@@ -241,6 +274,7 @@ jobs:
           path: artifacts/releases/
           if-no-files-found: error
       - name: Upload verified Mac screenshots
+        if: needs.changes.outputs.changed == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: archivebox-screenshots-macos
@@ -250,7 +284,8 @@ jobs:
 
   site:
     name: Build public site from verified screenshots
-    needs: [linux, windows, macos]
+    needs: [changes, linux, windows, macos]
+    if: needs.changes.outputs.changed == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -284,7 +319,7 @@ jobs:
   release:
     name: Publish verified desktop installers
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    needs: [linux, windows, macos, site]
+    needs: [linux, windows, macos]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -314,3 +349,11 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: node scripts/publish-release.js
+
+  complete:
+    name: 'Scheduled inputs: ${{ needs.changes.outputs.key }}'
+    needs: [changes, site]
+    if: needs.changes.outputs.changed == 'true'
+    runs-on: ubuntu-24.04
+    steps:
+      - run: echo 'Scheduled gallery completed successfully.'
