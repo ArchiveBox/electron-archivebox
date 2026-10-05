@@ -31,7 +31,7 @@
     "@electron-forge/maker-deb": "^7.11.2",
     "@electron-forge/maker-dmg": "^7.11.2",
     "@electron-forge/maker-rpm": "^7.11.2",
-    "@electron-forge/maker-squirrel": "^7.11.2",
+    "@electron-forge/maker-squirrel": "^8.0.1",
     "electron": "^44.4.3",
     "eslint": "^10.10.0",
     "playwright": "^1.63.0"
