@@ -50,7 +50,10 @@
           "^/_site($|/)",
           "^/screenshots($|/)",
           "^/scripts($|/)",
-          "^/\\.github($|/)"
+          "^/\\.github($|/)",
+          "^/node_modules/cpu-features($|/)",
+          "^/node_modules/ssh2/lib/protocol/crypto/build($|/)",
+          "^/out($|/)"
         ],
         "icon": "assets/icon"
       },
