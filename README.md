@@ -9,7 +9,7 @@
 <a href="https://github.com/ArchiveBox/electron-archivebox/releases/latest/download/ArchiveBox-Mac.dmg"><img src="https://img.shields.io/badge/Download-macOS-333333?style=for-the-badge&amp;logo=apple&amp;logoColor=white" alt="Download for macOS"></a>
 </p>
 <p>
-<a href="LICENSE"><img src="https://img.shields.io/badge/License-GPL--3.0-blue" alt="GPL-3.0 license"></a>
+<a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue" alt="MIT license"></a>
 <a href="https://github.com/ArchiveBox/electron-archivebox/stargazers"><img src="https://img.shields.io/github/stars/ArchiveBox/electron-archivebox?style=flat&amp;label=Star%20on%20GitHub" alt="GitHub stars"></a>
 </p>
 <p><a href="https://electron.archivebox.io/">Website</a> &nbsp; · &nbsp; <a href="#get-started">Get started</a> &nbsp; · &nbsp; <a href="https://electron.archivebox.io/screenshots/">Screenshots</a> &nbsp; · &nbsp; <a href="https://github.com/ArchiveBox/electron-archivebox/issues">Help &amp; feedback</a></p>
@@ -87,6 +87,6 @@ Keep the computer awake and Docker and ArchiveBox running. Settings also lets yo
 - 🐛 [Report a desktop app issue](https://github.com/ArchiveBox/electron-archivebox/issues) — include your operating system, app version, and what happened.
 - 🖼️ [Explore the screenshot gallery](https://electron.archivebox.io/screenshots/) — setup, saved pages, search, settings, and more.
 
-Free and open source under the [GNU GPL v3 license](LICENSE).
+Free and open source under the [MIT License](LICENSE).
 
 <p align="center"><a href="https://archivebox.io/">ArchiveBox Server</a> &nbsp; · &nbsp; <a href="https://app.archivebox.io/">Apple apps</a> &nbsp; · &nbsp; <a href="https://extension.archivebox.io/">Browser extension</a> &nbsp; · &nbsp; <a href="https://github.com/sponsors/pirate">Support the project ♡</a></p>

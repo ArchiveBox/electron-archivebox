@@ -25,7 +25,7 @@
     "web"
   ],
   "author": "Nick Sweeting",
-  "license": "GPL-3.0-only",
+  "license": "MIT",
   "devDependencies": {
     "@electron-forge/cli": "^8.0.1",
     "@electron-forge/maker-deb": "^8.0.1",
