@@ -1,0 +1,20 @@
+LICENSE
+  h_923c208e183a7b 1-21
+README.md
+  h_923c208e183a7b 12,90
+package-lock.json
+  h_923c208e183a7b 10
+package.json
+  h_923c208e183a7b 28
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "fae1a5f472ceeea5209cd3e4cb5d0472e53d0998",
+  "prompts": {},
+  "humans": {
+    "h_923c208e183a7b": {
+      "author": "Nick Sweeting <git@sweeting.me>"
+    }
+  }
+}
