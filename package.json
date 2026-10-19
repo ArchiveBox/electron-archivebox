@@ -33,7 +33,7 @@
     "@electron-forge/maker-rpm": "^8.0.1",
     "@electron-forge/maker-squirrel": "^8.0.1",
     "electron": "^44.5.1",
-    "eslint": "^10.12.0",
+    "eslint": "^10.13.0",
     "playwright": "^1.63.0"
   },
   "dependencies": {
