@@ -1,0 +1,21 @@
+package-lock.json
+  s_10bc94d001be49::t_829885927af52c 21-23,26,1774-1776,2430-2432,4029-4031,4035,4045-4047,6260-6262,6700-6702,7786-7788,7791,7795-7797
+package.json
+  s_10bc94d001be49::t_8342a117e424b4 15,35-37
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3b5db8056b3e4359e83d17f0885e3ccd544a3556",
+  "prompts": {},
+  "sessions": {
+    "s_10bc94d001be49": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a11f62-2c55-7051-a677-585a21b42fb4",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Nick Sweeting <git@sweeting.me>"
+    }
+  }
+}
