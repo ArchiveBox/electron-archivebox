@@ -40,7 +40,9 @@ jobs:
       backend: ${{ steps.check.outputs.backend }}
     steps:
       - id: check
-        if: github.event_name == 'schedule' || inputs.capture_gallery
+        # Stable server releases also need the real app journey against that
+        # exact backend; a build alone cannot verify client/server compatibility.
+        if: github.event_name == 'schedule' || inputs.capture_gallery || inputs.archivebox_version != ''
         uses: ArchiveBox/monorepo/.github/actions/changed-scheduled-inputs@main
         with:
           backend: ${{ inputs.archivebox_version && format('release:{0}', inputs.archivebox_version) || 'latest-release' }}
