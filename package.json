@@ -86,7 +86,8 @@
           "name": "@electron-forge/maker-rpm",
           "config": {
             "options": {
-              "icon": "assets/icon.png"
+              "icon": "assets/icon.png",
+              "specTemplate": "scripts/rpm.spec.ejs"
             }
           }
         }

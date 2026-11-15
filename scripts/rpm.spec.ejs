@@ -1,0 +1,89 @@
+<% /*
+Based on electron-installer-redhat 4.0.0 resources/spec.ejs (MIT).
+https://github.com/electron-userland/electron-installer-redhat/issues/343
+Only the copy command changes: RPM 4.20 runs install in a per-package directory
+and rewrites _builddir, while electron-installer-redhat stages in _topdir/BUILD.
+Use that absolute staging path and quote both paths for old and new RPM layouts.
+
+Copyright (c) 2016 Daniel Perez Alvarez
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of
+this software and associated documentation files (the "Software"), to deal in
+the Software without restriction, including without limitation the rights to
+use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
+of the Software, and to permit persons to whom the Software is furnished to do
+so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+*/ %>
+%define _binary_payload w<%= compressionLevel %>.xzdio
+
+%if "%{_host_cpu}" != "%{_target_cpu}"
+%global __strip /bin/true
+%endif
+
+Name: <%= name %>
+Version: <%= version %>
+Release: <%= revision %>%{?dist}
+<% if (description) { print(`Summary: ${description}\n`) }
+%>
+<% if (license) { print(`License: ${license}\n`) }
+if (homepage) { print(`URL: ${homepage}\n`) }
+if (license || homepage) { print('\n') }
+
+%>Requires: <%= requires.join(', ') %>
+AutoReqProv: no
+
+<% if (productDescription) {
+%>%description
+<% print(productDescription)
+print('\n\n\n') }
+
+
+%>%install
+mkdir -p %{buildroot}/usr/
+cp <%= process.platform === 'darwin' ? '-R' : '-r' %> "%{_topdir}/BUILD/usr/." "%{buildroot}/usr/"
+
+
+%files
+/usr/bin/<%= name %>
+/usr/lib/<%= name %>/
+/usr/share/applications/<%= name %>.desktop
+/usr/share/doc/<%= name %>/
+<% if (_.isObject(icon)) {
+  _.forEach(icon, function (path, resolution) {
+    %>/usr/share/icons/hicolor/<%= resolution %>/apps/<%= name %><%= resolution === 'symbolic' ? '-symbolic' : '' %>.<%= ['scalable', 'symbolic'].includes(resolution) ? 'svg' : 'png' %>
+<% }) } else {
+  %>/usr/share/pixmaps/<%= name %>.png
+<% } %>
+
+<% if (pre) {
+  %>%pre
+<% print(pre)
+if (preun || post || postun) print('\n\n\n') }
+
+
+%><% if (preun) {
+  %>%preun
+<% print(preun)
+if (post || postun) print('\n\n\n') }
+
+
+%><% if (post) {
+  %>%post
+<% print(post)
+if (postun) print('\n\n\n') }
+
+
+%><% if (postun) {
+  %>%postun
+<% print(postun) } %>
